@@ -1,0 +1,39 @@
+figure.figsize: 6.0, 5.0
+figure.autolayout: True
+figure.labelsize: x-large
+
+font.family: Helvetica, Arial, sans-serif
+mathtext.default: regular
+
+lines.dashed_pattern: 10.0, 10.0
+
+axes.linewidth: 1.0
+axes.labelsize: x-large
+axes.labelpad: 8.0
+
+xtick.top: True
+xtick.bottom: True
+xtick.direction: in
+xtick.major.size: 4.0
+xtick.major.width: 1.0
+xtick.major.pad: 12.0
+xtick.minor.size: 2.0
+xtick.labelsize: x-large
+
+ytick.left: True
+ytick.right: True
+ytick.direction: in
+ytick.major.size: 4.0
+ytick.major.width: 1.0
+ytick.major.pad: 12.0
+ytick.minor.size: 2.0
+ytick.labelsize: x-large
+
+legend.fancybox: False
+legend.framealpha: 1.0
+legend.edgecolor: black
+
+savefig.format: png
+savefig.dpi: 500
+savefig.bbox: tight
+savefig.pad_inches: 0.02

@@ -1,0 +1,54 @@
+[package]
+name = "kalast"
+description = "kalast"
+version = "0.1.0"
+authors = ["Grégoire Henry", "Grégoire Henry <gregoireh@pm.me>"]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+# repository = "https://github.com/GregoireHENRY/..."
+
+[lib]
+name = "kalast"
+crate-type = ["lib", "cdylib"] # rlib
+
+[features]
+default = ["tobj/use_f64"]
+# default = ["calc_f32"]
+calc_f32 = []
+
+[dependencies]
+# Generic
+zerocopy = "0.8"
+anyhow = "1.0"
+snafu = "0.8"
+serde = "1.0"
+env_logger = "0.11"
+confique = { version = "0.4", features = ["toml", "yaml", "json5"] }
+lazy_static = "1.5"
+once_cell = "1.21"
+
+# Albegra
+glam = { version = "0.30", features = ["serde", "bytemuck"] }
+
+# Mesh
+# tobj = { version = "4.0", features = ["use_f64"] }
+tobj = { version = "4.0" }
+
+# Python
+pyo3 = { version = "0.27", features = [
+    # "extension-module",
+    "experimental-inspect",
+] }
+numpy = { version = "0.27" }
+
+# Window/GPU
+bytemuck = { version = "1.24", features = ["derive"] }
+winit = { version = "0.30", features = ["android-native-activity"] }
+wgpu = { version = "26.0", features = ["serde"] }
+wgpu_text = "26.0"
+pollster = "0.4"
+image = { version = "0.25", default-features = false, features = [
+    "png",
+    "jpeg",
+    "hdr",
+] }

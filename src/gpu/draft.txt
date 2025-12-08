@@ -1,0 +1,44 @@
+
+// Make sure that if you add new instances to the Vec, you recreate the instance_buffer
+// as well as camera_bind_group. Otherwise, your new instances won't show up correctly.
+let instances = (0..config.instances_count_per_row)
+    .flat_map(|z| {
+        (0..config.instances_count_per_row).map(move |x| {
+            let x = config.instances_space_between
+                * (x as f32 - config.instances_count_per_row as f32 / 2.0);
+            let z = config.instances_space_between
+                * (z as f32 - config.instances_count_per_row as f32 / 2.0);
+
+            let position = glam::Vec3 { x, y: 0.0, z } + config.instances_displacement;
+
+            /*
+            let rotation = if position == glam::Vec3::ZERO {
+                // this is needed so an object at (0, 0, 0) won't get scaled to zero
+                // as Quaternions can affect scale if they're not created correctly
+                glam::Quat::from_axis_angle(glam::Vec3::Z, 0.0)
+            } else {
+                glam::Quat::from_axis_angle(
+                    position.normalize(),
+                    45.0 * std::f32::consts::PI / 180.0,
+                )
+            };
+            */
+
+            let rotation = glam::Quat::from_axis_angle(
+                (0.0, 1.0, 0.0).into(),
+                180.0 * std::f32::consts::PI / 180.0,
+            );
+
+            super::scene::Instance { position, rotation }
+        })
+    })
+    .collect::<Vec<_>>();
+let instance_data = instances
+    .iter()
+    .map(super::scene::Instance::to_raw)
+    .collect::<Vec<_>>();
+let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+    label: None,
+    contents: bytemuck::cast_slice(&instance_data),
+    usage: wgpu::BufferUsages::VERTEX,
+});

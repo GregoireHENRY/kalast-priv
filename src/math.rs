@@ -2,7 +2,6 @@ use numpy::ndarray::ArrayView1;
 
 use crate::{Float, Vec3};
 
-
 pub fn cosine_angle_vectors(u: &Vec3, v: &Vec3) -> Float {
     u.dot(*v)
 }
@@ -85,12 +84,12 @@ pub(crate) mod py {
             &Vec3::from_slice(normal.as_slice().unwrap()),
         ))
     }
-    
+
     #[pyfunction]
     pub fn flattening_radius(radii: Array<'_>) -> PyResult<Float> {
-        Ok(super::flattening_radius(
-            &Vec3::from_slice(radii.as_slice().unwrap()),
-        ))
+        Ok(super::flattening_radius(&Vec3::from_slice(
+            radii.as_slice().unwrap(),
+        )))
     }
 
     #[pyfunction]

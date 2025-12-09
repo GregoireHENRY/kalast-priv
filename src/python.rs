@@ -122,8 +122,8 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyadd_f!(mesh, crate::mesh::z_in_crater);
     pyadd_f!(mesh, crate::mesh::rms_slope);
     pyadd_f!(mesh, crate::mesh::rms_slope_hemisphere);
-    pyadd_f!(mesh, crate::mesh::distribution_slope_angles);
     pyadd_f!(mesh, crate::mesh::py::rms_slope_terrain);
+    pyadd_f!(mesh, crate::mesh::distribution_slope_angles);
     mesh.add_class::<crate::mesh::Vertex>()?;
     mesh.add_class::<crate::mesh::Facet>()?;
     mesh.add_class::<crate::mesh::Material>()?;

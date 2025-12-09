@@ -25,7 +25,11 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [dependency-groups]
-dev = ["maturin>=1.8.7", "ruff>=0.12.1",]
+dev = [
+    "maturin>=1.8.7",
+    "mypy>=1.19.0",
+    "ruff>=0.12.1",
+]
 
 [tool.maturin]
 module-name = "kalast._rs"

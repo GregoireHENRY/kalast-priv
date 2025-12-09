@@ -31,9 +31,7 @@ dx0 = 1e-2
 conductivity = kalast.tpm.properties.conductivity(
     thermal_inertia, density, heat_capacity
 )
-# diffusivity = kalast.tpm.properties.diffusivity(conductivity, density, heat_capacity)
-# diffusivity = kalast._rs.tpm.properties.diffusivity()
-diffusivity = kalast.tpm.properties.diffusivity()
+diffusivity = kalast.tpm.properties.diffusivity(conductivity, density, heat_capacity)
 
 
 exit()

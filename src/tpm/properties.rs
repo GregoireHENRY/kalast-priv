@@ -114,7 +114,9 @@ pub struct Properties {
     pub diffusivity: Float,
 }
 
+#[pymethods]
 impl Properties {
+    #[new]
     pub const fn new() -> Self {
         Self {
             albedo: 0.0,
@@ -125,15 +127,6 @@ impl Properties {
             conductivity: 0.0,
             diffusivity: 0.0,
         }
-    }
-}
-
-#[pymethods]
-impl Properties {
-    #[new]
-
-    pub fn py_new() -> Self {
-        Self::new()
     }
 
     pub fn compute_thermal_inertia(&mut self) {

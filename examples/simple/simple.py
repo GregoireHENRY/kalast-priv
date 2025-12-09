@@ -1,60 +1,46 @@
 #!/usr/bin/env python
 
-import math
 import time
 from pathlib import Path
 
-import glm
 import numpy
-import trimesh
 from matplotlib import pyplot
-# import matplotlib
+import matplotlib  # noqa
 
 import kalast
-from kalast.config import Config
-from kalast.util import AU, HOUR, DAY, RPD, matpow, numdigits_comma, STEFAN_BOLTZMANN
-from kalast.astro import Body, matspin, matobliq, cosinc, Interior
-from kalast.tpm.core import (
-    sun_radiation,
-    newton_method,
-    conduction_1d,
-    stability_maxdt,
-    stability,
-    skin_depth_1,
-    skin_depth_2pi,
+from kalast.util import AU, HOUR, DAY, RPD, STEFAN_BOLTZMANN
+
+
+# Config
+
+sun_distance = 1.0 * AU
+
+spin_period = 6.0 * HOUR
+obliquity = 0.0
+
+albedo = 0.1
+emissivity = 0.9
+density = 2000.0
+heat_capacity = 600.0
+thermal_inertia = 400.0
+
+dx0 = 1e-2
+
+# Simulation starts below.
+
+conductivity = kalast.tpm.properties.conductivity(
+    thermal_inertia, density, heat_capacity
 )
-from kalast.props import PROPERTIES
+# diffusivity = kalast.tpm.properties.diffusivity(conductivity, density, heat_capacity)
+# diffusivity = kalast._rs.tpm.properties.diffusivity()
+diffusivity = kalast.tpm.properties.diffusivity()
 
 
-# General config.
-cfg = Config()
-cfg.run()
+exit()
 
-# Sun position in global reference frame.
-sun = glm.dvec3(1, 0, 0) * AU
-
-# Body information.
-body = Body()
-spin_period = 12 * HOUR
-orbit_period = 365 * 2 * HOUR
-body.spin = matspin(spin_period, glm.dvec3(0, 0, 1))
-spin_init = matpow(body.spin, 0)
-obl = matobliq(0 * RPD)
-body.m = body.m * obl * spin_init
-
-# Surface properties.
-body.surf.mesh = trimesh.Trimesh(
-    vertices=[[100.0, 0.0, 0.0]], vertex_normals=[[1.0, 0.0, 0.0]]
-)
-prop = PROPERTIES["didymos"]
-body.surf.set_vertex_props_constant(prop)
-
-se = STEFAN_BOLTZMANN * prop.e
-print(f"k={prop.e:.6e} d={prop.d:.6e}")
+# se = STEFAN_BOLTZMANN * prop.e
 
 # Interior, properties, initial temperatures.
-body.inte = Interior()
-dx0 = 1e-2
 twodx0 = 2 * dx0
 dx02 = dx0 * dx0
 ls1 = skin_depth_1(prop.d, spin_period)

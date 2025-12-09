@@ -57,6 +57,7 @@ pub const DEIMOS: Properties = Properties {
 };
 
 #[pyfunction]
+#[pyo3(signature = (k: "float", p: "float", c: "float") -> "float")]
 pub fn thermal_inertia(k: Float, p: Float, c: Float) -> Float {
     // k: conductivity (...)
     // p: density (...)
@@ -65,7 +66,8 @@ pub fn thermal_inertia(k: Float, p: Float, c: Float) -> Float {
 }
 
 #[pyfunction]
-pub fn conductivity(ti: f64, p: f64, c: f64) -> f64 {
+#[pyo3(signature = (ti: "float", p: "float", c: "float") -> "float")]
+pub fn conductivity(ti: Float, p: Float, c: Float) -> Float {
     // ti: thermal inertia (...)
     // p: density (...)
     // c: heat conductivity (...)
@@ -73,7 +75,8 @@ pub fn conductivity(ti: f64, p: f64, c: f64) -> f64 {
 }
 
 #[pyfunction]
-pub const fn diffusivity(k: f64, p: f64, c: f64) -> f64 {
+#[pyo3(signature = (k: "float", p: "float", c: "float") -> "float")]
+pub const fn diffusivity(k: Float, p: Float, c: Float) -> Float {
     // k: conductivity (...)
     // p: density (...)
     // c: heat conductivity (...)

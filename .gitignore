@@ -12,3 +12,5 @@ uv.lock
 
 target/
 Cargo.lock
+
+kalast/**/*.pyi

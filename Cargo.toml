@@ -36,8 +36,8 @@ tobj = { version = "4.0" }
 
 # Python
 pyo3 = { version = "0.27", features = [
-    # "extension-module",
     "experimental-inspect",
+    "abi3-py314"
 ] }
 numpy = { version = "0.27" }
 

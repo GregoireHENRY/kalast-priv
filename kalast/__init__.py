@@ -5,8 +5,9 @@ from kalast import (  # noqa
     spice,
     tpm,
     util,
+    gpu,
     #
     io,
     plot,
-    gpu,
+    # typing,
 )

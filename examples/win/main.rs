@@ -1,9 +1,9 @@
-use glam;
 use kalast;
+use kalast::Vec3;
 
 fn main() {
     let _sun_au = 1.0;
-    let sun_dir = glam::Vec3::new(1.0, 0.0, 1.0).normalize();
+    let sun_dir = Vec3::new(1.0, 0.0, 1.0).normalize();
     let light_dist = 10.0;
 
     let config = kalast::gpu::config::Config {
@@ -11,16 +11,16 @@ fn main() {
         height: 1080,
         render_light: true,
         enable_back_face: true,
-        camera_pos: glam::Vec3::new(10.0, 0.0, 0.0),
-        camera_dir: glam::Vec3::new(-1.0, 0.0, 0.0),
-        camera_up: glam::Vec3::new(0.0, 0.0, 1.0),
+        camera_pos: Vec3::new(10.0, 0.0, 0.0),
+        camera_dir: Vec3::new(-1.0, 0.0, 0.0),
+        camera_up: Vec3::new(0.0, 0.0, 1.0),
         camera_fovy: 45.0,
         camera_znear: 0.1,
         camera_zfar: 100.0,
         camera_speed: 4.0,
         camera_sensitivity: 0.4,
         light_pos: sun_dir * light_dist,
-        light_color: glam::Vec3::new(1.0, 1.0, 1.0),
+        light_color: Vec3::new(1.0, 1.0, 1.0),
         start_paused: true,
         ambient_strength: 0.1,
         models: vec![kalast::gpu::config::ConfigModel {

@@ -94,18 +94,6 @@ def cmapv_to_rbg(value: float, cmap: matplotlib.colors.Colormap):
     return cmap.colors[index]
 
 
-def numdigits_all(v: float) -> int:
-    return numpy.floor(numpy.log10(v))
-
-
-def numdigits_comma(v: float) -> int:
-    d = numdigits_all(v)
-    if v < 1.0:
-        return abs(d)
-    else:
-        return 0
-
-
 def cart2sph(v: numpy.array) -> numpy.array:
     # az: counterclockwise angle in the x-y plane measured in radians from the positive x-axis [-pi, pi]
     # el: from x-y plane [-pi/2, pi/2]

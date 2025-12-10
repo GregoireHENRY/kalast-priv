@@ -69,3 +69,15 @@ def mat_axis_angle(axis: numpy.ndarray, angle: float) -> numpy.ndarray:
             [xzomc - ysin, yzomc + xsin, z2 * omc + cos],
         ]
     )
+
+
+def numdigits_all(v: float) -> int:
+    return numpy.floor(numpy.log10(v))
+
+
+def numdigits_comma(v: float) -> int:
+    d = numdigits_all(v)
+    if v < 1.0:
+        return abs(d)
+    else:
+        return 0

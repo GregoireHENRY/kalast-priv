@@ -17,6 +17,6 @@ def use_formatter_decimal_round(ax: matplotlib.axes.Axes):
     ax.yaxis.set_major_formatter(formatter)
 
 
-def load(style: str = "style1"):
+def load(style: str = "paper"):
     path = Path(__file__).parent.resolve()
     matplotlib.style.use(path / f"{style}.mplstyle")

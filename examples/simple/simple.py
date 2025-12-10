@@ -5,18 +5,23 @@ from pathlib import Path
 
 import numpy
 from matplotlib import pyplot
-import matplotlib  # noqa
 
 import kalast
-from kalast.util import AU, HOUR, DAY, RPD, STEFAN_BOLTZMANN
+from kalast.util import AU, HOUR, DAY
 
 
 # Config
+# ------
 
-sun_distance = 1.0 * AU
+sun = numpy.array([1.0, 0.0, 0.0]) * AU
+temperature_init = 290.0
+
+# surface position and normal
+p0 = numpy.array([100.0, 0.0, 0.0])
+n0 = numpy.array([1.0, 0.0, 0.0])
 
 spin_period = 6.0 * HOUR
-obliquity = 0.0
+spin_axis = numpy.array([0.0, 0.0, 1.0])
 
 albedo = 0.1
 emissivity = 0.9
@@ -24,122 +29,105 @@ density = 2000.0
 heat_capacity = 600.0
 thermal_inertia = 400.0
 
-dx0 = 1e-2
+delta_depth = 1e-2
 
-# Simulation starts below.
+delta_time = 300.0
+duration_total = 20.0 * DAY
+duration_save = 12 * HOUR
 
+progress_freq = "10"
+digits_full = 3
+digits_decimal = 0
+
+
+# Prepare simulation
+# ------------------
+
+se = kalast.util.STEFAN_BOLTZMANN * emissivity
 conductivity = kalast.tpm.properties.conductivity(
     thermal_inertia, density, heat_capacity
 )
 diffusivity = kalast.tpm.properties.diffusivity(conductivity, density, heat_capacity)
+ls1 = kalast.tpm.properties.skin_depth_1(diffusivity, spin_period)
+ls2pi = kalast.tpm.properties.skin_depth_2pi(diffusivity, spin_period)
 
-
-exit()
-
-# se = STEFAN_BOLTZMANN * prop.e
-
-# Interior, properties, initial temperatures.
-twodx0 = 2 * dx0
-dx02 = dx0 * dx0
-ls1 = skin_depth_1(prop.d, spin_period)
-ls2pi = skin_depth_2pi(prop.d, spin_period)
-ls2pi_orb = skin_depth_2pi(prop.d, orbit_period)
-maxdepth = ls2pi
-body.inte.z = numpy.arange(0, maxdepth + dx0, dx0)
-nx = body.inte.z.size
-nx_ls1 = (body.inte.z <= ls1).sum()
-nx_ls2pi = (body.inte.z <= ls2pi).sum()
-nx_save = (body.inte.z <= 4 * ls1).sum()
-# nx_save = nx
-dx = numpy.diff(body.inte.z)
+twodx0 = 2 * delta_depth
+dx02 = delta_depth * delta_depth
+x = numpy.arange(0, ls2pi + delta_depth, delta_depth)
+dx = numpy.diff(x)
 dx2in = dx[:-1] * dx[:-1]
-body.inte.p = numpy.ones(nx) * prop.p
-body.inte.c = numpy.ones(nx) * prop.c
-body.inte.k = numpy.ones(nx) * prop.k
-body.inte.d = numpy.ones(nx) * prop.d
-body.tmp = numpy.ones(nx) * 290.0
-print(
-    f"dx={dx0:.4f} ls1={ls1:.4f}({nx_ls1}) ls2pi={ls2pi:.4f}({nx_ls2pi}) ls2pi_orb={ls2pi_orb:.4f} maxdepth={maxdepth:.4f}({nx})"
-)
 
-# Time.
-dt = 300
-tf = 20 * DAY
-nit = numpy.ceil(tf / dt).astype(int) + 1
-S = stability(prop.d, dt, dx02)
-print(f"Using dt={dt}, stability={S:.2f}")
-print(f"simulation time={tf / DAY}days, {nit} it")
+nx_ls1 = (x <= ls1).sum()
+nx_ls2pi = (x <= ls2pi).sum()
+nx_save = (x <= 4 * ls1).sum()
 
-# Check convergence.
-maxdt = stability_maxdt(dx02, prop.d)
+dtpdx2in = delta_time / dx2in
+darr = numpy.ones(x.size) * diffusivity
+tmp = numpy.ones(x.size) * temperature_init
+
+nit = numpy.ceil(duration_total / delta_time).astype(int) + 1
+S = kalast.tpm.core.stability(diffusivity, delta_time, dx02)
+maxdt = kalast.tpm.core.stability_maxdt(diffusivity, dx02, 0.5)
+print(f"Using dt={delta_time}, stability={S:.2f}")
+print(f"simulation time={duration_total / DAY}days, {nit} it")
 print(f"max dt stable: {maxdt:.2f}")
 if S > 0.5:
     raise ValueError("Stability criteria not valid.")
 
-# Time loop progress.
-progress_freq = "10"
 digits = [len(_d) for _d in progress_freq.split(".")]
-digits_full = 3
-digits_decimal = 0
 if len(digits) == 2:
     digits_decimal = digits[1]
     if digits_decimal > 0:
         digits_full += digits_decimal + 1
 freqv = float(progress_freq)
 last_freq_reached = -freqv
-ndigits = numdigits_comma(freqv)
+ndigits = kalast.util.numdigits_comma(freqv)
 digit = 10**ndigits
 
-# Saving.
-t_save = 24 * HOUR
-nii_save = t_save // dt
-nii_hour = HOUR // dt
+nii_save = int(numpy.floor(duration_save / delta_time))
+nii_hour = int(numpy.floor(HOUR / delta_time))
 ts = numpy.zeros(nii_save)
-tmp = numpy.zeros((nii_save, nx))
+tmp_save = numpy.zeros((nii_save, x.size))
 print(f"{nii_save} iterations will be recorded (frequence update: {progress_freq}%)")
 print()
 
-# to update if dt changes.
-m_spin = matpow(body.spin, dt)
-dtpdx2in = dt / dx2in
+m_spin = kalast.util.mat_axis_angle(
+    spin_axis, 2.0 * numpy.pi * delta_time / spin_period
+)
+m_state = numpy.eye(3)
 
-# Loop variables.
+
+# Simulation
+# ----------
+
 t = 0
 it = 0
-
 while True:
-    # Get body orientation and position wrt Sun
     if it > 0:
-        body.m = body.m * m_spin
-    m = body.ref * body.m
-    mn = glm.transpose(glm.inverse(glm.dmat3(m)))
+        m_state = m_spin @ m_state
 
-    # For all facets, get incidence angle and distance of Sun
-    p = m * body.surf.mesh.vertices[0]
-    n = mn * body.surf.mesh.vertex_normals[0]
+    p = m_state @ p0
+    n = m_state @ n0
     v_sun = sun - p
-    d_sun = glm.length(v_sun)
+    d_sun = numpy.linalg.norm(v_sun)
     dau_sun = d_sun / AU
     u_sun = v_sun / d_sun
-    cosi = cosinc(u_sun, n)
+    cosi = kalast.math.cosine_incidence(u_sun, n)
+    sflux = kalast.tpm.core.radiation_sun(dau_sun, cosi, albedo)
 
-    # Get surface flux
-    sflux = sun_radiation(dau_sun, cosi, prop.a)
-
-    # Conduction of temperature
-    body.tmp[0] = newton_method(body.tmp[0], sflux, se, prop.k, body.tmp[1:3], twodx0)
-    body.tmp[1:-1] = conduction_1d(body.tmp, body.inte.d, dtpdx2in)
-    body.tmp[-1] = body.tmp[-2]
-    if body.tmp[0] is None:
+    tmp[0] = kalast.tpm.core.newton_method(
+        tmp[0], sflux, se, conductivity, tmp[1], tmp[2], twodx0
+    )
+    tmp[1:-1] = kalast.tpm.core.conduction_1d(tmp, darr, dtpdx2in)
+    tmp[-1] = tmp[-2]
+    if tmp[0] is None:
         raise ValueError("Newton method never converged.")
 
-    # Save data
     if nit - it <= nii_save:
         ii_save = nii_save - nit + it
         ts[ii_save] = t
-        tmp[ii_save] = body.tmp
+        tmp_save[ii_save] = tmp.copy()
 
-    # Show progress
     progress = it / (nit - 1) * 100
     if ndigits > 0:
         progress = numpy.floor(progress * digit) / digit
@@ -147,25 +135,27 @@ while True:
         last_freq_reached += freqv
         print(f"{progress:{digits_full}.{digits_decimal}f}% ({it:,}/{nit - 1:,}it)")
 
-    # Update loop
-    if t >= tf:
+    if t >= duration_total:
         break
-    t += dt
+    t += delta_time
     it += 1
     if it == 1:
         timer_1 = time.perf_counter()
 
-# Final show progress
 if last_freq_reached < 100:
     print(f"{100:{digits_full}.{digits_decimal}f}% ({it:,}/{nit - 1:,}it)")
 print()
 timer_2 = time.perf_counter()
 timer_elapsed = timer_2 - timer_1
 print(
-    f"Simulation duration = {timer_elapsed:.4f}s ({math.floor((nit - 1) / timer_elapsed):,}it/s)"
+    f"Simulation duration = {timer_elapsed:.4f}s ({numpy.floor((nit - 1) / timer_elapsed):,}it/s)"
 )
 
-# Prepare plot
+
+# Plot and export
+# ---------------
+
+tmp = tmp_save
 ts -= ts[0]
 ts /= HOUR
 path_out = Path("out")
@@ -176,23 +166,22 @@ fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Hours elapsed [h]")
 ax.set_ylabel("Temperature [K]")
 ax.plot(ts, tmp[:, 0], lw=1, color="k")
-ax.set_xlim(0, t_save / HOUR)
+ax.set_xlim(0, duration_save / HOUR)
 # ax.set_ylim(0, None)
 # ax.set_yscale("log")
 # pyplot.legend()
-fig.savefig(path_out / "surf.png", bbox_inches="tight", dpi=300)
-# pyplot.show()
+fig.savefig(path_out / "tmp_surf.svg", bbox_inches="tight")
 
 fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Temperature [K]")
 ax.set_ylabel("Depth [cm]")
 for ii in range(0, nii_save // 2, nii_hour):
-    ax.plot(tmp[ii, :], body.inte.z * 100, lw=1, color="k")
+    ax.plot(tmp[ii, :], x * 100, lw=1, color="k")
 # ax.set_xlim(0, None)
-ax.set_ylim(0, body.inte.z[nx_save - 1] * 100)
+ax.set_ylim(0, x[nx_save - 1] * 100)
 ax.invert_yaxis()
-fig.savefig(path_out / "depth_zoom.png", bbox_inches="tight", dpi=300)
+fig.savefig(path_out / "tpm_depth_zoom.svg", bbox_inches="tight")
 
-ax.set_ylim(body.inte.z[-1] * 100, 0)
-fig.savefig(path_out / "depth_full.png", bbox_inches="tight", dpi=300)
+ax.set_ylim(x[-1] * 100, 0)
+fig.savefig(path_out / "tpm_depth.svg", bbox_inches="tight")
 pyplot.show()

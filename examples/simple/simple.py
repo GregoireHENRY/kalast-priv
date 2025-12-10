@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import numpy
+import pandas
 from matplotlib import pyplot
 
 import kalast
@@ -161,6 +162,14 @@ ts /= HOUR
 path_out = Path("out")
 path_out.mkdir(parents=True, exist_ok=True)
 
+# surface
+
+df = {}
+df["t"] = ts
+df["tpm"] = tmp[:, 0]
+df = pandas.DataFrame(df)
+df.to_csv("out/tmp_surf.csv", index=False, encoding="utf-8-sig")
+
 kalast.plot.style.load()
 fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Hours elapsed [h]")
@@ -172,15 +181,24 @@ ax.set_xlim(0, duration_save / HOUR)
 # pyplot.legend()
 fig.savefig(path_out / "tmp_surf.svg", bbox_inches="tight")
 
+# depth
+
+df = {}
+df["x[cm]"] = x * 100.0
+
 fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Temperature [K]")
 ax.set_ylabel("Depth [cm]")
 for ii in range(0, nii_save // 2, nii_hour):
-    ax.plot(tmp[ii, :], x * 100, lw=1, color="k")
+    df[f"tpm:{ii}"] = tmp[ii, :]
+    ax.plot(tmp[ii, :], x * 100.0, lw=1, color="k")
 # ax.set_xlim(0, None)
-ax.set_ylim(0, x[nx_save - 1] * 100)
+ax.set_ylim(0, x[nx_save - 1] * 100.0)
 ax.invert_yaxis()
 fig.savefig(path_out / "tpm_depth_zoom.svg", bbox_inches="tight")
+
+df = pandas.DataFrame(df)
+df.to_csv("out/tmp_depth.csv", index=False, encoding="utf-8-sig")
 
 ax.set_ylim(x[-1] * 100, 0)
 fig.savefig(path_out / "tpm_depth.svg", bbox_inches="tight")

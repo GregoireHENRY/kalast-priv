@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy
 import pandas
+import scipy
 from matplotlib import pyplot
 
 import kalast
@@ -60,7 +61,12 @@ dx2in = dx[:-1] * dx[:-1]
 
 nx_ls1 = (x <= ls1).sum()
 nx_ls2pi = (x <= ls2pi).sum()
-nx_save = (x <= 4 * ls1).sum()
+nx_save = (x <= 3 * ls1).sum()
+
+print(f"k={conductivity:e} d={diffusivity:e}")
+print(f"ls1={ls1:.5f} ls2={ls2pi:.5f}")
+print(f"xmax={x.max()} dx={delta_depth} nx={x.size}")
+print()
 
 dtpdx2in = delta_time / dx2in
 darr = numpy.ones(x.size) * diffusivity
@@ -69,11 +75,13 @@ tmp = numpy.ones(x.size) * temperature_init
 nit = numpy.ceil(duration_total / delta_time).astype(int) + 1
 S = kalast.tpm.core.stability(diffusivity, delta_time, dx02)
 maxdt = kalast.tpm.core.stability_maxdt(diffusivity, dx02, 0.5)
-print(f"Using dt={delta_time}, stability={S:.2f}")
-print(f"simulation time={duration_total / DAY}days, {nit} it")
-print(f"max dt stable: {maxdt:.2f}")
+
+print(f"duration_total={duration_total / DAY}d")
+print(f"dt={delta_time} S={S:.2f} nit={nit}")
+print(f"max_dt_stable={maxdt:.2f}")
 if S > 0.5:
     raise ValueError("Stability criteria not valid.")
+print()
 
 digits = [len(_d) for _d in progress_freq.split(".")]
 if len(digits) == 2:
@@ -89,7 +97,9 @@ nii_save = int(numpy.floor(duration_save / delta_time))
 nii_hour = int(numpy.floor(HOUR / delta_time))
 ts = numpy.zeros(nii_save)
 tmp_save = numpy.zeros((nii_save, x.size))
-print(f"{nii_save} iterations will be recorded (frequence update: {progress_freq}%)")
+
+print(f"duration_record={duration_save / HOUR}h")
+print(f"nit_record={nii_save} (freq_update={progress_freq}%)")
 print()
 
 m_spin = kalast.util.mat_axis_angle(
@@ -116,13 +126,9 @@ while True:
     cosi = kalast.math.cosine_incidence(u_sun, n)
     sflux = kalast.tpm.core.radiation_sun(dau_sun, cosi, albedo)
 
-    tmp[0] = kalast.tpm.core.newton_method(
-        tmp[0], sflux, se, conductivity, tmp[1], tmp[2], twodx0
+    tmp = kalast.tpm.routine.update_thermal_state(
+        tmp, sflux, darr, dtpdx2in, se, conductivity, twodx0
     )
-    tmp[1:-1] = kalast.tpm.core.conduction_1d(tmp, darr, dtpdx2in)
-    tmp[-1] = tmp[-2]
-    if tmp[0] is None:
-        raise ValueError("Newton method never converged.")
 
     if nit - it <= nii_save:
         ii_save = nii_save - nit + it
@@ -159,8 +165,8 @@ print(
 tmp = tmp_save
 ts -= ts[0]
 ts /= HOUR
-path_out = Path("out")
-path_out.mkdir(parents=True, exist_ok=True)
+out = Path("out")
+out.mkdir(parents=True, exist_ok=True)
 
 # surface
 
@@ -168,38 +174,54 @@ df = {}
 df["t"] = ts
 df["tpm"] = tmp[:, 0]
 df = pandas.DataFrame(df)
-df.to_csv("out/tmp_surf.csv", index=False, encoding="utf-8-sig")
+df.to_csv(out / "tmp_surf.csv", index=False, encoding="utf-8-sig")
 
 kalast.plot.style.load()
 fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Hours elapsed [h]")
 ax.set_ylabel("Temperature [K]")
+
 ax.plot(ts, tmp[:, 0], lw=1, color="k")
+
+# tnew = numpy.arange(ts[0], ts[-1] + 0.001, 0.001)
+# tmp_v_time = scipy.interpolate.make_smoothing_spline(ts, tmp[:, 0], lam=0.0)
+# ax.plot(tnew, tmp_v_time(tnew), lw=1, color="r")
+
 ax.set_xlim(0, duration_save / HOUR)
-# ax.set_ylim(0, None)
+ax.set_ylim(240, 360)
 # ax.set_yscale("log")
 # pyplot.legend()
-fig.savefig(path_out / "tmp_surf.svg", bbox_inches="tight")
+fig.savefig(out / "tmp_surf.svg", bbox_inches="tight")
 
 # depth
 
 df = {}
 df["x[cm]"] = x * 100.0
 
+xnew = numpy.arange(x[0], x[-1] + 0.001, 0.001) * 100.0
+
 fig, ax = pyplot.subplots(figsize=(6, 4))
 ax.set_xlabel("Temperature [K]")
 ax.set_ylabel("Depth [cm]")
 for ii in range(0, nii_save // 2, nii_hour):
     df[f"tpm:{ii}"] = tmp[ii, :]
-    ax.plot(tmp[ii, :], x * 100.0, lw=1, color="k")
-# ax.set_xlim(0, None)
+    # ax.plot(tmp[ii, :], x * 100.0, lw=1, color="k")
+
+    tmp_v_depth = scipy.interpolate.make_smoothing_spline(
+        x * 100.0, tmp[ii, :], lam=0.0
+    )
+    ax.plot(tmp_v_depth(xnew), xnew, lw=1, color="k", ls="-")
+ax.set_xlim(240, 360)
+
+# 4 * ls1
 ax.set_ylim(0, x[nx_save - 1] * 100.0)
 ax.invert_yaxis()
-fig.savefig(path_out / "tpm_depth_zoom.svg", bbox_inches="tight")
+fig.savefig(out / "tpm_depth_zoom.svg", bbox_inches="tight")
+
+# ls2pi
+ax.set_ylim(x[-1] * 100, 0)
+fig.savefig(out / "tpm_depth.svg", bbox_inches="tight")
+pyplot.show()
 
 df = pandas.DataFrame(df)
-df.to_csv("out/tmp_depth.csv", index=False, encoding="utf-8-sig")
-
-ax.set_ylim(x[-1] * 100, 0)
-fig.savefig(path_out / "tpm_depth.svg", bbox_inches="tight")
-pyplot.show()
+df.to_csv(out / "tmp_depth.csv", index=False, encoding="utf-8-sig")

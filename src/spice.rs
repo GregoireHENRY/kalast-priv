@@ -194,7 +194,7 @@ impl Entity {
 }
 
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Body {
     pub entity: Entity,
     pub radii: Vec3,
@@ -291,8 +291,14 @@ impl Body {
     }
 }
 
+impl std::fmt::Debug for Body {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.__repr__())
+    }
+}
+
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Camera {
     pub entity: Entity,
     pub px: UVec2,
@@ -376,8 +382,14 @@ impl Camera {
     }
 }
 
+impl std::fmt::Debug for Camera {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.__repr__())
+    }
+}
+
 #[pyclass]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Spacecraft {
     pub entity: Entity,
     #[pyo3(get, set)]
@@ -436,5 +448,11 @@ impl Spacecraft {
             "Spacecraft(id={}, name={}, frame={}, label={}, id_cameras=[{}])",
             self.entity.id, self.entity.name, self.entity.frame, self.entity.label, s
         )
+    }
+}
+
+impl std::fmt::Debug for Spacecraft {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.__repr__())
     }
 }

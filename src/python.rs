@@ -195,6 +195,13 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .getattr("modules")?
         .set_item("kalast._rs.tpm.emit", emit)?;
 
+    let routine = PyModule::new(tpm.py(), "routine")?;
+    pyadd_f!(routine, crate::tpm::routine::py::update_thermal_state);
+    tpm.add_submodule(&routine)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.tpm.routine", routine)?;
+
     let gpu = PyModule::new(m.py(), "gpu")?;
     m.add_submodule(&gpu)?;
     py.import("sys")?
@@ -234,6 +241,20 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     py.import("sys")?
         .getattr("modules")?
         .set_item("kalast._rs.gpu.config", config)?;
+
+    let routines = PyModule::new(m.py(), "routines")?;
+    m.add_submodule(&routines)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.routines", &routines)?;
+
+    let setup = PyModule::new(routines.py(), "setup")?;
+    setup.add_class::<crate::routines::setup::py::Time>()?;
+    setup.add_class::<crate::routines::setup::py::Setup>()?;
+    routines.add_submodule(&routines)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.routines.setup", setup)?;
 
     Ok(())
 }

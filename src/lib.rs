@@ -6,6 +6,7 @@ pub mod python;
 pub mod spice;
 pub mod tpm;
 pub mod util;
+pub mod routines;
 
 pub type UVec2 = glam::USizeVec2;
 

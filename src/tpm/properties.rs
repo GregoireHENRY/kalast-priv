@@ -103,7 +103,7 @@ pub fn skin_depth_2pi(d: f64, p: f64) -> f64 {
 
 #[pyclass]
 #[pyo3(get_all, set_all)]
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Properties {
     pub albedo: Float,
     pub emissivity: Float,
@@ -144,5 +144,24 @@ impl Properties {
     pub fn compute_conductivity_diffusivity(&mut self) {
         self.compute_conductivity();
         self.compute_diffusivity();
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!(
+            "Properties(albedo={}, emissivity={}, density={}, heat_capacity={}, thermal_inertia={}, conductivity={}, diffusivity={})",
+            self.albedo,
+            self.emissivity,
+            self.density,
+            self.heat_capacity,
+            self.thermal_inertia,
+            self.conductivity,
+            self.diffusivity,
+        )
+    }
+}
+
+impl std::fmt::Debug for Properties {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.__repr__())
     }
 }

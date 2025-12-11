@@ -6,6 +6,7 @@ from kalast import (  # noqa
     tpm,
     util,
     gpu,
+    routines,
     #
     io,
     plot,

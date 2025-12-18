@@ -117,15 +117,24 @@ pub struct Properties {
 #[pymethods]
 impl Properties {
     #[new]
-    pub const fn new() -> Self {
+    #[pyo3(signature = (albedo=0.0, emissivity=1.0, density=0.0, heat_capacity=0.0, thermal_inertia=0.0, conductivity=0.0, diffusivity=0.0))]
+    pub fn new(
+        albedo: Float,
+        emissivity: Float,
+        density: Float,
+        heat_capacity: Float,
+        thermal_inertia: Float,
+        conductivity: Float,
+        diffusivity: Float,
+    ) -> Self {
         Self {
-            albedo: 0.0,
-            emissivity: 1.0,
-            density: 0.0,
-            heat_capacity: 0.0,
-            thermal_inertia: 0.0,
-            conductivity: 0.0,
-            diffusivity: 0.0,
+            albedo,
+            emissivity,
+            density,
+            heat_capacity,
+            thermal_inertia,
+            conductivity,
+            diffusivity,
         }
     }
 

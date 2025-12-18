@@ -2,7 +2,7 @@ pub mod astro;
 pub mod gpu;
 pub mod math;
 pub mod mesh;
-pub mod python;
+pub mod py;
 pub mod spice;
 pub mod tpm;
 pub mod util;

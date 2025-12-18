@@ -1,3 +1,5 @@
+pub mod routines;
+
 use std::sync::Mutex;
 
 use once_cell::sync::Lazy;
@@ -249,8 +251,12 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .set_item("kalast._rs.routines", &routines)?;
 
     let setup = PyModule::new(routines.py(), "setup")?;
-    setup.add_class::<crate::routines::setup::py::Time>()?;
-    setup.add_class::<crate::routines::setup::py::Setup>()?;
+    setup.add_class::<routines::setup::ProgressDebug>()?;
+    setup.add_class::<routines::setup::Time>()?;
+    setup.add_class::<crate::routines::setup::SkinDepthParams>()?;
+    setup.add_class::<routines::setup::BodyDataMap>()?;
+    setup.add_class::<crate::routines::setup::Body>()?;
+    setup.add_class::<routines::setup::Setup>()?;
     routines.add_submodule(&routines)?;
     py.import("sys")?
         .getattr("modules")?

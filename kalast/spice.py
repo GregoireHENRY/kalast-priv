@@ -1,23 +1,15 @@
 import numpy
 import spiceypy as spice
 
-from kalast._rs.spice import (  # noqa
-    BODIES,
-    CAMERAS,
-    SPACECRAFTS,
-    Body,
+# nothing yet
+# from kalast._rs.spice import (  # noqa
+# )
+
+from kalast._rs.entity import (  # noqa
     Camera,
+    Body,
     Spacecraft,
 )
-
-# Can define a new body like that.
-# DIDYMOS = Body()
-# DIDYMOS.id = 65803
-# DIDYMOS.name = "DIDYMOS"
-# DIDYMOS.frame = "DIDYMOS_FIXED"
-# DIDYMOS.radii = numpy.array([409.5, 400.5, 302.5])
-# DIDYMOS.orbit_period = 700 * 24 * 3600
-# DIDYMOS.spin_period = 2.26 * 3600
 
 
 def cam_cpt_surf(ray: numpy.array, cam: Camera, bod: Body, et: float):

@@ -50,6 +50,10 @@ from kalast._rs.util import (  # noqa
     MASS_SUN,
     NEWTON_METHOD_MAX_ITERATION,
     NEWTON_METHOD_THRESHOLD,
+    SPICE_PICTUR_1,
+    SPICE_PICTUR_2,
+    SPICE_PICTUR_3,
+    SFLUX_545,
 )
 
 

@@ -132,12 +132,6 @@ impl std::fmt::Debug for Record {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Surface {
-    Mesh(crate::mesh::Mesh),
-    Facets(Vec<crate::mesh::Facet>),
-}
-
 #[pyclass]
 #[pyo3(get_all, set_all)]
 #[derive(Clone)]
@@ -247,42 +241,28 @@ pub enum Interior {
     SetupColumn(SetupColumn),
 }
 
-#[pyclass]
 #[derive(Clone)]
 pub struct Body {
-    pub surface: Surface,
+    pub mesh: crate::mesh::Mesh,
     pub interior: Interior,
     pub state: Mat4,
-
-    #[pyo3(get, set)]
     pub spin_period: Float,
-
     pub spin_axis: Vec3,
-
-    #[pyo3(get, set)]
     pub orbit_period: Float,
-
     pub orbit_axis: Vec3,
 }
 
-#[pymethods]
 impl Body {
-    #[new]
-    #[pyo3(signature = (spin_period = 0.0, orbit_period = 0.0))]
-    pub fn new(spin_period: Float, orbit_period: Float) -> Self {
+    pub fn new() -> Self {
         Self {
-            surface: Surface::Facets(vec![]),
+            mesh: crate::mesh::Mesh::new(),
             interior: Interior::Column(vec![]),
             state: Mat4::IDENTITY,
-            spin_period,
+            spin_period: 0.0,
             spin_axis: Vec3::Z,
-            orbit_period,
+            orbit_period: 0.0,
             orbit_axis: Vec3::Z,
         }
-    }
-
-    pub fn __repr__(&self) -> String {
-        format!("{:?}", self)
     }
 }
 
@@ -290,8 +270,8 @@ impl std::fmt::Debug for Body {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Body(surface={:?}, interior={:?}, state={}, spin_period={}, spin_axis={}, orbit_period={}, orbit_axis={})",
-            self.surface,
+            "Body(mesh={:?}, interior={:?}, state={}, spin_period={}, spin_axis={}, orbit_period={}, orbit_axis={})",
+            self.mesh,
             self.interior,
             &self.state,
             self.spin_period,

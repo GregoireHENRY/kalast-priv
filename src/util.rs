@@ -25,7 +25,7 @@ pub const TEMP_SUN: f64 = 5778.0;
 pub const RADIUS_SUN: f64 = 696340e3;
 pub const JANSKY: f64 = 1e26;
 
-/// # Zero-point flux in the Johnson V-band (W/m3) (see Bessell+ 1998)
+/// Zero-point flux in the Johnson V-band (W/m3) (see Bessell+ 1998)
 pub const BAND_V0: f64 = 3.631e-2;
 
 pub const MASS_SUN: f64 = 1.989e30;
@@ -33,6 +33,13 @@ pub const GRAVITATIONAL_CONSTANT: f64 = 6.6743e-11;
 
 pub const NEWTON_METHOD_MAX_ITERATION: usize = 1000;
 pub const NEWTON_METHOD_THRESHOLD: f64 = 0.1;
+
+pub const SPICE_PICTUR_1: &str = "YYYY-MM-DD HR:MN ::RND";
+pub const SPICE_PICTUR_2: &str = "YYYY-MM-DD ::RND";
+pub const SPICE_PICTUR_3: &str = "YYYYMMDDTHRMNSC ::RND";
+
+// incident spectral solar flux at 1 AU at 545 nm
+pub const SFLUX_545: f64 = 1896.0;
 
 pub fn bool_to_on_off(b: bool) -> String {
     if b { "ON" } else { "OFF" }.to_string()

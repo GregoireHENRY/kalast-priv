@@ -1,12 +1,13 @@
 pub mod astro;
+pub mod entity;
 pub mod gpu;
 pub mod math;
 pub mod mesh;
 pub mod py;
+pub mod routines;
 pub mod spice;
 pub mod tpm;
 pub mod util;
-pub mod routines;
 
 pub type UVec2 = glam::USizeVec2;
 
@@ -49,3 +50,5 @@ pub type Mat4 = glam::DMat4;
 pub type Quat = glam::Quat;
 #[cfg(not(feature = "calc_f32"))]
 pub type Quat = glam::DQuat;
+
+// pub use kalast_macros::pybind;

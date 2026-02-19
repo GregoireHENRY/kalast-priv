@@ -101,8 +101,6 @@ pub fn skin_depth_2pi(d: f64, p: f64) -> f64 {
     (4.0 * std::f64::consts::PI * d * p).sqrt()
 }
 
-#[pyclass]
-#[pyo3(get_all, set_all)]
 #[derive(Clone, Default)]
 pub struct Properties {
     pub albedo: Float,
@@ -114,10 +112,7 @@ pub struct Properties {
     pub diffusivity: Float,
 }
 
-#[pymethods]
 impl Properties {
-    #[new]
-    #[pyo3(signature = (albedo=0.0, emissivity=1.0, density=0.0, heat_capacity=0.0, thermal_inertia=0.0, conductivity=0.0, diffusivity=0.0))]
     pub fn new(
         albedo: Float,
         emissivity: Float,
@@ -154,9 +149,12 @@ impl Properties {
         self.compute_conductivity();
         self.compute_diffusivity();
     }
+}
 
-    pub fn __repr__(&self) -> String {
-        format!(
+impl std::fmt::Debug for Properties {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "Properties(albedo={}, emissivity={}, density={}, heat_capacity={}, thermal_inertia={}, conductivity={}, diffusivity={})",
             self.albedo,
             self.emissivity,
@@ -164,13 +162,7 @@ impl Properties {
             self.heat_capacity,
             self.thermal_inertia,
             self.conductivity,
-            self.diffusivity,
+            self.diffusivity
         )
-    }
-}
-
-impl std::fmt::Debug for Properties {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.__repr__())
     }
 }

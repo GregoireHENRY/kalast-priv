@@ -1,13 +1,15 @@
 from kalast import (  # noqa
+    # Rust modules bindings
     astro,
+    entity,
+    gpu,
     math,
     mesh,
+    routines,
     spice,
     tpm,
     util,
-    gpu,
-    routines,
-    #
+    # Pure python modules
     io,
     plot,
     # typing,

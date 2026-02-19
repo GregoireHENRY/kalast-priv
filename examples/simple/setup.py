@@ -18,9 +18,12 @@ setup.thermal_properties = [
     )
 ]
 
+# mat = numpy.eye(4)
+
 setup.bodies = [
     kalast.routines.setup.Body(
-        spin_period=6.0 * HOUR,
+        # state=numpy.eye(4),
+        # spin_period=6.0 * HOUR,
         # spin_axis=numpy.array([0.0, 0.0, 1.0]),
     )
 ]
@@ -37,3 +40,21 @@ p0 = numpy.array([100.0, 0.0, 0.0])
 n0 = numpy.array([1.0, 0.0, 0.0])
 
 delta_depth = 1e-2
+
+
+v = kalast.mesh.Vertex(
+    pos=[0.0, 0.0, 0.0],
+    normal=[0.0, 0.0, 1.0],
+)
+
+f = kalast.mesh.Facet(
+    pos=[0.0, 0.0, 0.0],
+    normal=[0.0, 0.0, 1.0],
+    area=0.05,
+)
+
+m = kalast.mesh.Mesh(
+    vertices=[
+        v,
+    ],
+)

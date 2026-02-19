@@ -1,12 +1,18 @@
 use std::{cell::RefCell, rc::Rc};
 
 use ndarray::Array1;
-use numpy::{PyArray1, PyArrayMethods, PyReadonlyArray1, ToPyArray};
+use numpy::{PyArrayMethods, ToPyArray, ndarray};
 use pyo3::prelude::*;
 
 use crate::{
     Float,
-    routines::setup::{Body, ProgressDebug as RsProgressDebug, Time as RsTime},
+    //Mat4,
+    py::tpm::properties::Properties,
+    routines::setup::{
+        // Body as RsBody, Interior as RsInterior,
+        ProgressDebug as RsProgressDebug,
+        Time as RsTime,
+    },
 };
 
 #[pyclass(unsendable)]
@@ -120,6 +126,135 @@ impl Time {
 }
 
 #[pyclass(unsendable)]
+#[derive(Clone)]
+pub struct Body {
+    // pub inner: Rc<RefCell<RsBody>>,
+    // pub surface: Rc<RefCell<RsSurface>>,
+    // pub interior: Rc<RefCell<RsInterior>>,
+}
+
+#[pymethods]
+impl Body {
+    #[new]
+    #[pyo3(signature = ())]
+    // #[pyo3(signature = (mesh=None, state=[[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], spin_period=0.0, spin_axis=[0.0, 0.0, 1.0], orbit_period=0.0, orbit_axis=[0.0, 0.0, 1.0]))]
+    pub fn new(// mesh: Option<crate::py::mesh::Mesh>,
+        // state: [[Float; 4]; 4],
+        // spin_period: Float,
+        // spin_axis: [Float; 3],
+        // orbit_period: Float,
+        // orbit_axis: [Float; 3],
+    ) -> Self {
+        Self {
+            // inner: Rc::new(RefCell::new(RsBody {
+            //     mesh: mesh.unwrap_or(crate::py::mesh::Mesh::empty()),
+            //     interior: RsInterior::Column(vec![]),
+            //     state: Mat4::from_cols_array_2d(&state),
+            //     spin_period,
+            //     spin_axis: spin_axis.into(),
+            //     orbit_period,
+            //     orbit_axis: orbit_axis.into(),
+            // })),
+        }
+    }
+
+    /*
+    #[getter]
+    fn mesh<'py>(&'py self, py: Python<'py>) -> PyResult<Py<crate::mesh::Mesh>> {
+        let mesh = crate::mesh::Mesh {
+            inner: Rc::clone(&self.mesh),
+        };
+        Py::new(py, mesh)
+    }
+
+    #[setter]
+    fn set_mesh(&mut self, mesh: PyRef<crate::mesh::Mesh>) {
+        self.inner.borrow_mut().mesh = Rc::clone(&mesh);
+    }
+    */
+
+    /*
+    // Getter that allows numpy.ndarray read and write.
+    #[getter]
+    fn state<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray2<Float>> {
+        let inner = &slf.borrow().inner;
+        let matref = &inner.borrow().state;
+        let arr = ndarray::ArrayView::from(matref.as_ref());
+        let arr2d = arr.into_shape_with_order((4, 4)).unwrap();
+        unsafe { numpy::PyArray2::borrow_from_array(&arr2d, slf.into_any()) }
+    }
+
+    // Setter that allows shorthand operators.
+    #[setter]
+    fn set_state(&self, state: [[Float; 4]; 4]) {
+        self.inner.borrow_mut().state = Mat4::from_cols_array_2d(&state);
+    }
+
+    #[getter]
+    fn spin_period(&self) -> Float {
+        self.inner.borrow().spin_period
+    }
+
+    #[setter]
+    fn set_spin_period(&self, period: Float) {
+        self.inner.borrow_mut().spin_period = period;
+    }
+
+    // Getter that allows numpy.ndarray read and write.
+    #[getter]
+    fn spin_axis<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
+        let inner = &slf.borrow().inner;
+        let slice = &inner.borrow().spin_axis;
+        let arr = ndarray::ArrayView1::from(slice.as_ref());
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
+    }
+
+    // Setter that allows shorthand operators.
+    #[setter]
+    fn set_spin_axis(&self, axis: [Float; 3]) {
+        self.inner.borrow_mut().spin_axis = axis.into();
+    }
+
+    #[getter]
+    fn orbit_period(&self) -> Float {
+        self.inner.borrow().orbit_period
+    }
+
+    #[setter]
+    fn set_orbit_period(&self, period: Float) {
+        self.inner.borrow_mut().orbit_period = period;
+    }
+
+    // Getter that allows numpy.ndarray read and write.
+    #[getter]
+    fn orbit_axis<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
+        let inner = &slf.borrow().inner;
+        let slice = &inner.borrow().orbit_axis;
+        let arr = ndarray::ArrayView1::from(slice.as_ref());
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
+    }
+
+    // Setter that allows shorthand operators.
+    #[setter]
+    fn set_orbit_axis(&self, axis: [Float; 3]) {
+        self.inner.borrow_mut().orbit_axis = axis.into();
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.inner.borrow())
+    }
+    */
+}
+
+/*
+impl std::fmt::Debug for Body {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.inner.borrow())
+    }
+}
+*/
+
+#[pyclass(unsendable)]
 pub struct BodyDataMap {
     temperatures: Vec<Array1<Float>>,
     thermal_properties_all: usize,
@@ -132,7 +267,7 @@ impl BodyDataMap {
     #[new]
     #[pyo3(signature = (temperatures, thermal_properties_all, thermal_properties_map))]
     fn new(
-        temperatures: Vec<PyReadonlyArray1<Float>>,
+        temperatures: Vec<numpy::PyReadonlyArray1<Float>>,
         thermal_properties_all: usize,
         thermal_properties_map: Vec<(usize, usize)>,
     ) -> Self {
@@ -147,7 +282,7 @@ impl BodyDataMap {
     }
 
     #[getter]
-    fn temperatures<'py>(&'py self, py: Python<'py>) -> Vec<Bound<'py, PyArray1<Float>>> {
+    fn temperatures<'py>(&'py self, py: Python<'py>) -> Vec<Bound<'py, numpy::PyArray1<Float>>> {
         self.temperatures
             .iter()
             .map(|arr| arr.to_pyarray(py))
@@ -155,7 +290,7 @@ impl BodyDataMap {
     }
 
     #[setter]
-    fn set_temperatures(&mut self, v: Vec<PyReadonlyArray1<Float>>) -> PyResult<()> {
+    fn set_temperatures(&mut self, v: Vec<numpy::PyReadonlyArray1<Float>>) -> PyResult<()> {
         self.temperatures = v.iter().map(|arr| arr.to_owned_array()).collect::<Vec<_>>();
         Ok(())
     }
@@ -193,8 +328,12 @@ pub struct Setup {
     pub sun_position: RefCell<[Float; 3]>,
 
     #[pyo3(get, set)]
-    pub thermal_properties: Vec<crate::tpm::properties::Properties>,
+    pub thermal_properties: Vec<Properties>,
 
+    // Vec<Body>
+    // pub bodies: Py<PyList>,
+    // bodies: PyList::new(py, Vec::<Body>::new()).unwrap().into(),
+    // self.bodies.bind(py).iter().join(", "),
     #[pyo3(get, set)]
     pub bodies: Vec<Body>,
 
@@ -221,12 +360,12 @@ impl Setup {
     }
 
     #[getter]
-    fn sun_position<'py>(&'py self, py: Python<'py>) -> Bound<'py, PyArray1<Float>> {
-        PyArray1::from_slice(py, self.sun_position.borrow().as_slice())
+    fn sun_position<'py>(&'py self, py: Python<'py>) -> Bound<'py, numpy::PyArray1<Float>> {
+        numpy::PyArray1::from_slice(py, self.sun_position.borrow().as_slice())
     }
 
     #[setter]
-    fn set_sun_position(&self, v: PyReadonlyArray1<Float>) -> PyResult<()> {
+    fn set_sun_position(&self, v: numpy::PyReadonlyArray1<Float>) -> PyResult<()> {
         self.sun_position
             .borrow_mut()
             .copy_from_slice(v.as_slice().unwrap());
@@ -261,10 +400,11 @@ impl Setup {
 
     pub fn __repr__(&self) -> String {
         format!(
-            "Setup(sun_position={:?}, thermal_properties={:?}, bodies={:?}, bodies_data_map={:?}, progress_debug={:?}, time={:?})",
+            // "Setup(sun_position={:?}, thermal_properties={:?}, bodies={:?}, bodies_data_map={:?}, progress_debug={:?}, time={:?})",
+            "Setup(sun_position={:?}, thermal_properties={:?}, bodies=???, bodies_data_map={:?}, progress_debug={:?}, time={:?})",
             self.sun_position.borrow(),
             self.thermal_properties,
-            self.bodies,
+            // self.bodies,
             self.bodies_data_map,
             self.progress_debug.borrow(),
             self.time.borrow()

@@ -1,7 +1,4 @@
 use glam::Vec4Swizzles;
-use image::GenericImageView;
-use numpy::{PyArray1, PyArrayMethods, ToPyArray};
-use pyo3::prelude::*;
 
 use crate::{Float, Mat4, PI, Vec2, Vec3};
 
@@ -37,9 +34,8 @@ pub const EPSILON_F32_INTERSECT_TRIANGLE: Float = 1e-3;
 //     v.to_array().into_bound_py_any(py)
 // }
 
-#[pyclass]
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub pos: Vec3,
     pub tex: Vec2,
@@ -47,233 +43,68 @@ pub struct Vertex {
     pub tangent: Vec3,
     pub bitangent: Vec3,
     pub color: Vec3,
-
-    #[pyo3(get)]
     pub color_mode: u32,
     pub _padding: u32,
 }
 
-impl std::fmt::Display for Vertex {
+impl Vertex {
+    // Need const default for GPU code so we don't use derive Default which is not const.
+    pub const fn default() -> Self {
+        Self {
+            pos: Vec3::new(0.0, 0.0, 0.0),
+            tex: Vec2::new(0.0, 0.0),
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            tangent: Vec3::new(0.0, 0.0, 0.0),
+            bitangent: Vec3::new(0.0, 0.0, 0.0),
+            color: Vec3::new(0.0, 0.0, 0.0),
+            color_mode: 0,
+            _padding: 0,
+        }
+    }
+}
+
+impl std::fmt::Debug for Vertex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Vertex(pos={:?}, tex={:?}, normal={:?}, tangent={:?}, bitangent={:?}, color={:?}, color_mode={})",
-            self.pos.to_array(),
-            self.tex.to_array(),
-            self.normal.to_array(),
-            self.tangent.to_array(),
-            self.bitangent.to_array(),
-            self.color.to_array(),
+            "Vertex(pos={}, tex={}, normal={}, tangent={}, bitangent={}, color={}, color_mode={})",
+            self.pos,
+            self.tex,
+            self.normal,
+            self.tangent,
+            self.bitangent,
+            self.color,
             self.color_mode,
         )
     }
 }
 
-#[pymethods]
-impl Vertex {
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{}", self))
-    }
+#[repr(C)]
+#[derive(Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Facet {
+    pub pos: Vec3,
+    pub normal: Vec3,
+    pub area: Float,
+}
 
-    #[staticmethod]
+impl Facet {
+    // Need const default for GPU code so we don't use derive Default which is not const.
     pub const fn default() -> Self {
         Self {
-            pos: Vec3::ZERO,
-            tex: Vec2::ZERO,
-            normal: Vec3::ZERO,
-            tangent: Vec3::ZERO,
-            bitangent: Vec3::ZERO,
-            color: Vec3::ZERO,
-            color_mode: 0,
-            _padding: 0,
+            pos: Vec3::new(0.0, 0.0, 0.0),
+            normal: Vec3::new(0.0, 0.0, 0.0),
+            area: 0.0,
         }
     }
-
-    // Getter list read-only.
-    // #[getter]
-    // pub fn pos(&self) -> PyResult<[f32; 3]> {
-    //     Ok(self.pos.into())
-    // }
-
-    // Getter numpy.ndarray read-only.
-    // #[getter]
-    // pub fn pos<'py>(&self, py: Python<'py>) -> Bound<'py, numpy::PyArray1<f32>> {
-    //     numpy::PyArray::from_slice(py, self.pos.as_ref())
-    // }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn pos<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().pos;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_pos<'py>(&mut self, pos: Bound<'py, numpy::PyArray1<Float>>) {
-        let pos = unsafe { pos.as_slice().unwrap() };
-        self.pos.x = pos[0];
-        self.pos.y = pos[1];
-        self.pos.z = pos[2];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn tex<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().tex;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_tex<'py>(&mut self, tex: Bound<'py, numpy::PyArray1<Float>>) {
-        let tex = unsafe { tex.as_slice().unwrap() };
-        self.tex.x = tex[0];
-        self.tex.y = tex[1];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn normal<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().normal;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_normal<'py>(&mut self, normal: Bound<'py, numpy::PyArray1<Float>>) {
-        let normal = unsafe { normal.as_slice().unwrap() };
-        self.normal.x = normal[0];
-        self.normal.y = normal[1];
-        self.normal.z = normal[2];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn tangent<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().tangent;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_tangent<'py>(&mut self, tangent: Bound<'py, numpy::PyArray1<Float>>) {
-        let tangent = unsafe { tangent.as_slice().unwrap() };
-        self.tangent.x = tangent[0];
-        self.tangent.y = tangent[1];
-        self.tangent.z = tangent[2];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn bitangent<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().bitangent;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_bitangent<'py>(&mut self, bitangent: Bound<'py, numpy::PyArray1<Float>>) {
-        let bitangent = unsafe { bitangent.as_slice().unwrap() };
-        self.bitangent.x = bitangent[0];
-        self.bitangent.y = bitangent[1];
-        self.bitangent.z = bitangent[2];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn color<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().color;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_color<'py>(&mut self, color: Bound<'py, numpy::PyArray1<Float>>) {
-        let color = unsafe { color.as_slice().unwrap() };
-        self.color.x = color[0];
-        self.color.y = color[1];
-        self.color.z = color[2];
-    }
 }
 
-#[pyclass]
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Facet {
-    // pos center of facet
-    pub p: Vec3,
-
-    // normal of facet
-    pub n: Vec3,
-
-    // area of facet
-    #[pyo3(get)]
-    pub a: Float,
-}
-
-impl std::fmt::Display for Facet {
+impl std::fmt::Debug for Facet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Facet(p=[{},{},{}], n=[{},{},{}], area={})",
-            self.p[0], self.p[1], self.p[2], self.n[0], self.n[1], self.n[2], self.a,
+            "Facet(pos={}, normal={}, area={})",
+            self.pos, self.normal, self.area,
         )
-    }
-}
-
-#[pymethods]
-impl Facet {
-    pub fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("{}", self))
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn p<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().p;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_p<'py>(&mut self, p: Bound<'py, numpy::PyArray1<Float>>) {
-        let p = unsafe { p.as_slice().unwrap() };
-        self.p.x = p[0];
-        self.p.y = p[1];
-        self.p.z = p[2];
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn n<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<Float>> {
-        let slice = &slf.borrow().n;
-        let slice2 = slice.as_ref();
-        let arr = numpy::ndarray::ArrayView1::from(slice2);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    // Setter numpy.ndarray to allow shorthand operators.
-    #[setter]
-    pub fn set_n<'py>(&mut self, n: Bound<'py, numpy::PyArray1<Float>>) {
-        let n = unsafe { n.as_slice().unwrap() };
-        self.n.x = n[0];
-        self.n.y = n[1];
-        self.n.z = n[2];
     }
 }
 
@@ -293,7 +124,6 @@ where
     load_image(path)
 }
 
-#[pyclass]
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct Material {
@@ -320,29 +150,8 @@ impl Material {
     }
 }
 
-#[pymethods]
-impl Material {
-    pub fn diffuse_bytes(&self) -> PyResult<&[u8]> {
-        Ok(self.diffuse.as_bytes())
-    }
-
-    pub fn diffuse_dimensions(&self) -> PyResult<(u32, u32)> {
-        Ok(self.diffuse.dimensions())
-    }
-
-    pub fn normal_bytes(&self) -> PyResult<&[u8]> {
-        Ok(self.normal.as_bytes())
-    }
-
-    pub fn normal_dimensions(&self) -> PyResult<(u32, u32)> {
-        Ok(self.normal.dimensions())
-    }
-}
-
-#[pyclass]
-#[pyo3(get_all, set_all)]
 #[repr(C)]
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -354,6 +163,16 @@ pub struct Mesh {
 }
 
 impl Mesh {
+    pub const fn new() -> Self {
+        Self {
+            vertices: vec![],
+            indices: vec![],
+            facets: vec![],
+            material_id: None,
+            _vertices_before_flatten: vec![],
+        }
+    }
+
     pub fn load<P, F>(path: P, update_pos: F) -> Self
     where
         P: AsRef<std::path::Path>,
@@ -363,7 +182,7 @@ impl Mesh {
         meshes.drain(0..1).next().unwrap()
     }
 
-    pub fn load_with_data<F>(
+    fn __load_with_data<F>(
         _positions: Vec<f32>,
         _indices: Vec<u32>,
         _texcoords: Vec<f32>,
@@ -508,96 +327,6 @@ impl Mesh {
         */
     }
 
-    pub fn update_colors(&mut self, mode: u32, color: Vec3) {
-        for v in &mut self.vertices {
-            v.color_mode = mode;
-            v.color = color;
-        }
-    }
-
-    pub fn get_vertices_facet(&self, facet: usize) -> [&Vertex; 3] {
-        if self.is_flat() {
-            self.vertices
-                .chunks(3)
-                .map(|c| [&c[0], &c[1], &c[2]])
-                .skip(facet)
-                .next()
-                .unwrap()
-        } else {
-            self.get_indices_facet(facet)
-                .map(|ii| &self.vertices[ii as usize])
-        }
-    }
-
-    pub fn get_positions_facet(&self, facet: usize) -> [&Vec3; 3] {
-        self.get_vertices_facet(facet).map(|v| &v.pos)
-    }
-
-    pub fn get_normals_facet(&self, facet: usize) -> [&Vec3; 3] {
-        self.get_vertices_facet(facet).map(|v| &v.normal)
-    }
-    pub fn intersect(&self, p: &Vec3, u: &Vec3, exit_first: bool) -> Option<(usize, Vec3)> {
-        intersect_mesh(self, p, u, exit_first)
-    }
-}
-
-#[pymethods]
-impl Mesh {
-    #[new]
-    #[pyo3(signature = (path: "str", update_pos: "Callable[[numpy.array], numpy.array]") -> "None")]
-    pub fn py_load(path: &str, update_pos: Py<PyAny>) -> Self {
-        let update_pos = |pos: Vec3| {
-            Python::attach(|py| {
-                update_pos
-                    .call1(py, (pos.to_array().to_pyarray(py),))
-                    .unwrap()
-                    .extract::<[Float; 3]>(py)
-                    .unwrap()
-            })
-            .into()
-        };
-        Self::load(path, update_pos)
-    }
-
-    #[classmethod]
-    // #[pyo3(signature = (vertices: "numpy.array", indices: "numpy.array", texcoords: "numpy.array", normals: "numpy.array", update_pos: "Callable[[numpy.array], numpy.array]") -> "None")]
-    pub fn py_load_with_data(
-        _cls: &Bound<'_, pyo3::types::PyType>,
-        update_pos: Py<PyAny>,
-        positions: Vec<f64>,
-        indices: Vec<u32>,
-        texcoords: Vec<f64>,
-        normals: Vec<f64>,
-    ) -> PyResult<()> {
-        let update_pos = |pos: glam::Vec3| {
-            glam::Vec3::from(Python::attach(|py| {
-                update_pos
-                    .call1(py, (pos.to_array().to_pyarray(py),))
-                    .unwrap()
-                    .extract::<[f32; 3]>(py)
-                    .unwrap()
-            }))
-        };
-
-        Self::load_with_data(
-            positions.into_iter().map(|e| e as _).collect(),
-            indices,
-            texcoords.into_iter().map(|e| e as _).collect(),
-            normals.into_iter().map(|e| e as _).collect(),
-            update_pos,
-        );
-
-        Ok(())
-    }
-
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn indices<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<u32>> {
-        let slice = &slf.borrow().indices;
-        let arr = numpy::ndarray::ArrayView1::from(slice);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
     // Take normals per facet and straight apply them to vertices per facet.
     // Also duplicate vertex to follow indices.
     pub fn flatten(&mut self) {
@@ -607,9 +336,9 @@ impl Mesh {
         let mut new = vec![];
 
         for (fi, fv) in self.indices.chunks(3).enumerate() {
-            self.vertices[fv[0] as usize].normal = self.facets[fi].n;
-            self.vertices[fv[1] as usize].normal = self.facets[fi].n;
-            self.vertices[fv[2] as usize].normal = self.facets[fi].n;
+            self.vertices[fv[0] as usize].normal = self.facets[fi].normal;
+            self.vertices[fv[1] as usize].normal = self.facets[fi].normal;
+            self.vertices[fv[2] as usize].normal = self.facets[fi].normal;
 
             new.push(self.vertices[fv[0] as usize]);
             new.push(self.vertices[fv[1] as usize]);
@@ -649,9 +378,9 @@ impl Mesh {
 
         // add surrounding normals per facet
         for (fi, fv) in self.indices.chunks(3).enumerate() {
-            self.vertices[fv[0] as usize].normal += self.facets[fi].n;
-            self.vertices[fv[1] as usize].normal += self.facets[fi].n;
-            self.vertices[fv[2] as usize].normal += self.facets[fi].n;
+            self.vertices[fv[0] as usize].normal += self.facets[fi].normal;
+            self.vertices[fv[1] as usize].normal += self.facets[fi].normal;
+            self.vertices[fv[2] as usize].normal += self.facets[fi].normal;
         }
 
         // normalize to get average
@@ -665,6 +394,60 @@ impl Mesh {
         !self._vertices_before_flatten.is_empty()
     }
 
+    pub fn get_vertices_facet(&self, facet: usize) -> [&Vertex; 3] {
+        if self.is_flat() {
+            self.vertices
+                .chunks(3)
+                .map(|c| [&c[0], &c[1], &c[2]])
+                .skip(facet)
+                .next()
+                .unwrap()
+        } else {
+            self.get_indices_facet(facet)
+                .map(|ii| &self.vertices[ii as usize])
+        }
+    }
+
+    pub fn get_indices_facet(&self, facet: usize) -> [u32; 3] {
+        self.indices
+            .chunks(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .skip(facet)
+            .next()
+            .unwrap()
+    }
+
+    pub fn get_positions_facet(&self, facet: usize) -> [&Vec3; 3] {
+        self.get_vertices_facet(facet).map(|v| &v.pos)
+    }
+
+    pub fn get_normals_facet(&self, facet: usize) -> [&Vec3; 3] {
+        self.get_vertices_facet(facet).map(|v| &v.normal)
+    }
+
+    pub fn update_colors(&mut self, mode: u32, color: Vec3) {
+        for v in &mut self.vertices {
+            v.color_mode = mode;
+            v.color = color;
+        }
+    }
+
+    pub fn intersect(&self, p: &Vec3, u: &Vec3, exit_first: bool) -> Option<(usize, Vec3)> {
+        intersect_mesh(self, p, u, exit_first)
+    }
+}
+
+/*
+#[pymethods]
+impl Mesh {
+    // Getter numpy.ndarray read and write.
+    #[getter]
+    fn indices<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<u32>> {
+        let slice = &slf.borrow().indices;
+        let arr = numpy::ndarray::ArrayView1::from(slice);
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
+    }
+
     #[pyo3(name = "update_colors")]
     pub fn py_update_colors<'py>(
         slf: Bound<'py, Self>,
@@ -676,15 +459,6 @@ impl Mesh {
             v.color_mode = mode;
             v.color = color;
         }
-    }
-
-    pub fn get_indices_facet(&self, facet: usize) -> [u32; 3] {
-        self.indices
-            .chunks(3)
-            .map(|c| [c[0], c[1], c[2]])
-            .skip(facet)
-            .next()
-            .unwrap()
     }
 
     #[pyo3(name = "get_vertices_facet")]
@@ -727,9 +501,8 @@ impl Mesh {
         py::intersect_mesh(slf, p, u, exit_first)
     }
 }
+*/
 
-#[pyclass]
-#[pyo3(get_all, set_all)]
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct Model {
@@ -817,11 +590,11 @@ impl Model {
                             let b = vertices[fv[1] as usize].pos;
                             let c = vertices[fv[2] as usize].pos;
 
-                            let p = (a + b + c) / 3.0;
+                            let pos = (a + b + c) / 3.0;
 
                             let ab = b - a;
                             let ac = c - a;
-                            let n = normal_facet(&ab, &ac);
+                            let normal = normal_facet(&ab, &ac);
                             let area = area_facet(&ab, &ac);
 
                             // println!(
@@ -829,7 +602,7 @@ impl Model {
                             //     fi, fv[0], fv[1], fv[2], n
                             // );
 
-                            facets.push(Facet { p, n, a: area })
+                            facets.push(Facet { pos, normal, area })
                         }
                     }
                 }
@@ -924,6 +697,7 @@ impl Model {
     }
 }
 
+/*
 #[pymethods]
 impl Model {
     #[new]
@@ -942,6 +716,7 @@ impl Model {
         Self::load(path, update_pos)
     }
 }
+*/
 
 pub fn normal_facet(ab: &Vec3, ac: &Vec3) -> Vec3 {
     // ab: b - a
@@ -1131,7 +906,6 @@ pub fn intersect_mesh(mesh: &Mesh, p: &Vec3, u: &Vec3, exit_first: bool) -> Opti
 }
 
 /// Compute the view factor between a facet A and B with area of facet B.
-#[pyfunction]
 pub fn view_factor_scalar_with_area(
     area_b: Float,
     angle_at_a: Float,
@@ -1143,7 +917,6 @@ pub fn view_factor_scalar_with_area(
 
 /// View factor between facet A and B but without area of facet B.
 /// You can actually multiply by the area of facet A instead of B if A is transmitting energy to B.
-#[pyfunction]
 pub fn view_factor_scalar(angle_at_a: Float, angle_at_b: Float, distance_a2b: Float) -> Float {
     angle_at_a.cos() * angle_at_b.cos() / (PI * distance_a2b.powi(2))
 }
@@ -1159,22 +932,22 @@ pub fn view_factor_scalar(angle_at_a: Float, angle_at_b: Float, distance_a2b: Fl
 /// transmitting energy to the other one.
 pub fn view_factor_facets(face_a: &Facet, face_b: &Facet, trans_b2a: &Mat4) -> Float {
     // Vector from center of facet **A** to facet **B**.
-    let vector_a2b = (trans_b2a * face_b.p.extend(1.0)).xyz() - face_a.p;
+    let vector_a2b = (trans_b2a * face_b.pos.extend(1.0)).xyz() - face_a.pos;
     let distance_a2b = vector_a2b.length();
     let unit_a2b = vector_a2b.normalize();
 
     // This is a condition on the relation between distance of the two facets and their surface area to avoid too large
     // view factor in case of very close distance.
     // TODO: subdivide the facet and recompute.
-    if distance_a2b < face_b.a.sqrt() {
+    if distance_a2b < face_b.area.sqrt() {
         return 0.0;
     }
 
     // Angles from both normals and the unit vector to the other facet.
     // The normal of facet B needs to be transformed to fixed-frame A for correct calculation.
-    let angle_at_a = face_a.n.angle_between(unit_a2b);
+    let angle_at_a = face_a.normal.angle_between(unit_a2b);
     let angle_at_b = trans_b2a
-        .transform_vector3(face_b.n)
+        .transform_vector3(face_b.normal)
         .angle_between(-unit_a2b);
 
     // Another condition is one that was actually mentioned earlier: angles must be smaller than 90°.
@@ -1190,7 +963,6 @@ pub fn view_factor_facets(face_a: &Facet, face_b: &Facet, trans_b2a: &Mat4) -> F
 ///
 /// S: curvature diameter
 #[allow(non_snake_case)]
-#[pyfunction]
 pub fn largest_slope_angle_sphere(S: Float) -> Float {
     (1.0 - 2.0 * S).acos()
 }
@@ -1199,7 +971,6 @@ pub fn largest_slope_angle_sphere(S: Float) -> Float {
 ///
 /// g: largest slope angle
 #[allow(non_snake_case)]
-#[pyfunction]
 pub fn curvature_diameter_sphere(S: Float) -> Float {
     (1.0 - S.cos()) / 2.0
 }
@@ -1208,7 +979,6 @@ pub fn curvature_diameter_sphere(S: Float) -> Float {
 ///
 /// r: radius crater
 /// d: depth crater
-#[pyfunction]
 pub fn curvature_radius(r: Float, d: Float) -> Float {
     (r.powi(2) + d.powi(2)) / (2.0 * d)
 }
@@ -1218,7 +988,6 @@ pub fn curvature_radius(r: Float, d: Float) -> Float {
 /// R: curvature radius
 /// d: depth crater
 #[allow(non_snake_case)]
-#[pyfunction]
 pub fn curvature_diameter_from_radius(d: Float, R: Float) -> Float {
     d / (2.0 * R)
 }
@@ -1229,7 +998,6 @@ pub fn curvature_diameter_from_radius(d: Float, R: Float) -> Float {
 /// r: radius crater
 /// d: depth crater
 #[allow(non_snake_case)]
-#[pyfunction]
 pub fn z_in_crater(x: Float, y: Float, r: Float, d: Float) -> Float {
     let R = curvature_radius(r, d);
     R - d - (R.powi(2) - x.powi(2) - y.powi(2)).sqrt()
@@ -1239,7 +1007,6 @@ pub fn z_in_crater(x: Float, y: Float, r: Float, d: Float) -> Float {
 ///
 /// f: coverage
 /// g: largest slope angle
-#[pyfunction]
 pub fn rms_slope(f: Float, g: Float) -> Float {
     (f / 2.0 * (g.powi(2) - (g * g.cos() - g.sin()).powi(2) / g.sin().powi(2))).sqrt()
 }
@@ -1247,7 +1014,6 @@ pub fn rms_slope(f: Float, g: Float) -> Float {
 /// RMS slope in case of hemispherical crater, in radian
 ///
 /// f: coverage
-#[pyfunction]
 pub fn rms_slope_hemisphere(f: Float) -> Float {
     49.0 * f.sqrt()
 }
@@ -1270,11 +1036,11 @@ pub fn rms_slope_terrain(
     (s1 / s2).sqrt()
 }
 
-#[pyfunction]
 pub fn distribution_slope_angles(theta: Float, a: Float, b: Float) -> Float {
     a * (-theta.tan().powi(2) / b).exp() * theta.sin() / theta.cos().powi(2)
 }
 
+/*
 pub(crate) mod py {
     use image::GenericImageView;
     use numpy::ToPyArray;
@@ -1465,3 +1231,4 @@ pub(crate) mod py {
         Ok(super::rms_slope_terrain(theta.as_array(), a.as_array()))
     }
 }
+*/

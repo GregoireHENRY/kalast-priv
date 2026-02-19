@@ -1,4 +1,9 @@
+pub mod entity;
+pub mod mesh;
 pub mod routines;
+pub mod spice;
+pub mod tpm;
+pub mod util;
 
 use std::sync::Mutex;
 
@@ -69,6 +74,10 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyadd_c!(util, crate::util::MASS_SUN);
     pyadd_c!(util, crate::util::NEWTON_METHOD_MAX_ITERATION);
     pyadd_c!(util, crate::util::NEWTON_METHOD_THRESHOLD);
+    pyadd_c!(util, crate::util::SPICE_PICTUR_1);
+    pyadd_c!(util, crate::util::SPICE_PICTUR_2);
+    pyadd_c!(util, crate::util::SPICE_PICTUR_3);
+    pyadd_c!(util, crate::util::SFLUX_545);
     m.add_submodule(&util)?;
     py.import("sys")?
         .getattr("modules")?
@@ -88,21 +97,43 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .set_item("kalast._rs.math", math)?;
 
     let spice = PyModule::new(m.py(), "spice")?;
-    spice.add("BODIES", crate::spice::BODIES.lock().unwrap().clone())?;
-    spice.add("CAMERAS", crate::spice::CAMERAS.lock().unwrap().clone())?;
-    spice.add(
-        "SPACECRAFTS",
-        crate::spice::SPACECRAFTS.lock().unwrap().clone(),
-    )?;
-    spice.add_class::<crate::spice::Body>()?;
-    spice.add_class::<crate::spice::Camera>()?;
-    spice.add_class::<crate::spice::Spacecraft>()?;
     m.add_submodule(&spice)?;
     py.import("sys")?
         .getattr("modules")?
         .set_item("kalast._rs.spice", spice)?;
 
+    let entity = PyModule::new(m.py(), "entity")?;
+
+    let r = |x| entity::Body::from_raw(x);
+    entity.add("EARTH", r(crate::entity::EARTH.clone()))?;
+    entity.add("MOON", r(crate::entity::MOON.clone()))?;
+    entity.add("MARS", r(crate::entity::MARS.clone()))?;
+    entity.add("PHOBOS", r(crate::entity::PHOBOS.clone()))?;
+    entity.add("DEIMOS", r(crate::entity::DEIMOS.clone()))?;
+    entity.add("DIDYMOS", r(crate::entity::DIDYMOS.clone()))?;
+    entity.add("DIMORPHOS", r(crate::entity::DIMORPHOS.clone()))?;
+    entity.add("DIMORPHOS_PRE", r(crate::entity::DIMORPHOS_PRE.clone()))?;
+
+    let r = |x| entity::Camera::from_raw(x);
+    entity.add("TIRI", r(crate::entity::TIRI.clone()))?;
+    entity.add("AFC", r(crate::entity::AFC.clone()))?;
+
+    let r = |x| entity::Spacecraft::from_raw(entity.py(), x);
+    entity.add("HERA", r(crate::entity::HERA.clone()))?;
+    entity.add("HALCA", r(crate::entity::HALCA.clone()))?;
+    entity.add("MEX", r(crate::entity::MEX.clone()))?;
+    entity.add("TGO", r(crate::entity::TGO.clone()))?;
+
+    entity.add_class::<entity::Body>()?;
+    entity.add_class::<entity::Camera>()?;
+    entity.add_class::<entity::Spacecraft>()?;
+    m.add_submodule(&entity)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.entity", entity)?;
+
     let mesh = PyModule::new(m.py(), "mesh")?;
+    /*
     pyadd_f!(mesh, crate::mesh::py::load_image);
     pyadd_f!(mesh, crate::mesh::py::normal_facet);
     pyadd_f!(mesh, crate::mesh::py::area_facet);
@@ -126,11 +157,17 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyadd_f!(mesh, crate::mesh::rms_slope_hemisphere);
     pyadd_f!(mesh, crate::mesh::py::rms_slope_terrain);
     pyadd_f!(mesh, crate::mesh::distribution_slope_angles);
-    mesh.add_class::<crate::mesh::Vertex>()?;
-    mesh.add_class::<crate::mesh::Facet>()?;
-    mesh.add_class::<crate::mesh::Material>()?;
-    mesh.add_class::<crate::mesh::Mesh>()?;
+    */
+
+    mesh.add_class::<mesh::Vertex>()?;
+    mesh.add_class::<mesh::Facet>()?;
+    mesh.add_class::<mesh::Material>()?;
+    mesh.add_class::<mesh::Mesh>()?;
+
+    /*
     mesh.add_class::<crate::mesh::Model>()?;
+    */
+
     m.add_submodule(&mesh)?;
     py.import("sys")?
         .getattr("modules")?
@@ -168,17 +205,19 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .set_item("kalast._rs.tpm.core", core)?;
 
     let properties = PyModule::new(tpm.py(), "properties")?;
-    pyadd_c!(properties, crate::tpm::properties::DIDYMOS);
-    pyadd_c!(properties, crate::tpm::properties::DIMORPHOS);
-    pyadd_c!(properties, crate::tpm::properties::MOON);
-    pyadd_c!(properties, crate::tpm::properties::PHOBOS);
-    pyadd_c!(properties, crate::tpm::properties::DEIMOS);
+
+    let r = |x| tpm::properties::Properties::from_raw(x);
+    properties.add("DIDYMOS", r(crate::tpm::properties::DIDYMOS))?;
+    properties.add("DIMORPHOS", r(crate::tpm::properties::DIMORPHOS))?;
+    properties.add("MOON", r(crate::tpm::properties::MOON))?;
+    properties.add("PHOBOS", r(crate::tpm::properties::PHOBOS))?;
+    properties.add("DEIMOS", r(crate::tpm::properties::DEIMOS))?;
     pyadd_f!(properties, crate::tpm::properties::conductivity);
     pyadd_f!(properties, crate::tpm::properties::diffusivity);
     pyadd_f!(properties, crate::tpm::properties::thermal_inertia);
     pyadd_f!(properties, crate::tpm::properties::skin_depth_1);
     pyadd_f!(properties, crate::tpm::properties::skin_depth_2pi);
-    properties.add_class::<crate::tpm::properties::Properties>()?;
+    properties.add_class::<tpm::properties::Properties>()?;
     tpm.add_submodule(&properties)?;
     py.import("sys")?
         .getattr("modules")?
@@ -255,7 +294,7 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     setup.add_class::<routines::setup::Time>()?;
     setup.add_class::<crate::routines::setup::SkinDepthParams>()?;
     setup.add_class::<routines::setup::BodyDataMap>()?;
-    setup.add_class::<crate::routines::setup::Body>()?;
+    setup.add_class::<routines::setup::Body>()?;
     setup.add_class::<routines::setup::Setup>()?;
     routines.add_submodule(&routines)?;
     py.import("sys")?

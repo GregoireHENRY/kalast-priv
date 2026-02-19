@@ -24,7 +24,7 @@ pub fn spectral_radiance(f: f64, e: f64, cose: f64, r: f64) -> f64 {
     // f: planck radiation (W/m3/sr)
     // e: spectral emissivity
     // cose: cosine of emission angle
-    // r: rougness correction
+    // r: roughness correction
     f * e * cose * r
 }
 

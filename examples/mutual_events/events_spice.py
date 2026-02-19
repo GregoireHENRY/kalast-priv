@@ -28,7 +28,7 @@ ec = 0
 last_mo = "08"
 
 while True:
-    date = spice.timout(et, kalast.util.TIMOUT3)
+    date = spice.timout(et, kalast.util.SPICE_PICTUR_3)
 
     ocid = spice.occult(
         "didymos",

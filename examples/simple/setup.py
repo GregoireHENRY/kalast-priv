@@ -54,7 +54,11 @@ f = kalast.mesh.Facet(
 )
 
 m = kalast.mesh.Mesh(
-    vertices=[
-        v,
-    ],
+    # vertices=[
+    #     v,
+    # ],
 )
+
+m.add_vertex([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+m.add_vertex([3.0, 3.0, 3.0], [4.0, 4.0, 4.0])
+m.add_vertex([5.0, 5.0, 5.0], [6.0, 6.0, 6.0])

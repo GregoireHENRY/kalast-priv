@@ -1,16 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use image::GenericImageView;
-use ndarray::s;
-use numpy::npyffi::types::npy_intp;
-use numpy::{PyArray1, PyArray2, ToPyArray};
-use pyo3::{prelude::*, types::PyList};
-
-use memoffset::offset_of;
-use numpy::PyArrayMethods;
-use numpy::npyffi::objects::PyArrayObject;
-use pyo3::ffi;
-use std::ptr;
+use numpy::{PyArrayMethods, ToPyArray};
+use pyo3::prelude::*;
 
 use crate::{Float, Vec3};
 
@@ -323,29 +315,23 @@ impl Mesh {
     }
 
     #[getter]
-    fn positions<'py>(slf: Bound<'py, Self>) -> Bound<'py, PyArray2<f64>> {
+    fn positions<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray2<f64>> {
         let py = slf.py();
         let mesh = slf.borrow();
         let mesh = mesh.inner.borrow();
 
         let n = mesh.vertices.len();
+        let flat: &[f64] = bytemuck::cast_slice(&mesh.vertices);
+        let array = flat.to_pyarray(py).reshape([n, 18]).unwrap();
 
-        let total_f64 = n * 18;
+        let view = unsafe { array.as_array() };
 
-        let ptr = mesh.vertices.as_ptr() as *mut f64;
+        let pos_view = view.slice(ndarray::s![.., 0..3]);
+        pos_view.to_pyarray(py)
+    }
 
-        let array_1d = unsafe {
-            PyArray1::from_raw_parts(
-                py,
-                total_f64,
-                ptr,
-                Some(slf.into_any()), // keep mesh alive
-            )
-        };
-
-        let array_2d = array_1d.reshape([n, 18]).unwrap();
-
-        array_2d.slice(s![.., 0..3])
+    pub fn __repr__(&self) -> String {
+        format!("{:?}", self.inner.borrow())
     }
 }
 
@@ -494,24 +480,6 @@ impl Mesh {
         };
 
         Self::from(py, crate::mesh::Mesh::load(path, update_pos))
-    }
-
-    pub fn __repr__(&self) -> String {
-        format!("{:?}", self)
-    }
-}
-
-impl std::fmt::Debug for Mesh {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Mesh(vertices={}, indices={}, facets={}, material_id={}",
-            self.vertices,
-            self.indices,
-            self.facets,
-            self.material_id
-                .map_or("None".to_string(), |id: usize| id.to_string()),
-        )
     }
 }
 */

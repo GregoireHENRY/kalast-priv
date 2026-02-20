@@ -151,7 +151,7 @@ impl Material {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Mesh {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -434,6 +434,20 @@ impl Mesh {
 
     pub fn intersect(&self, p: &Vec3, u: &Vec3, exit_first: bool) -> Option<(usize, Vec3)> {
         intersect_mesh(self, p, u, exit_first)
+    }
+}
+
+impl std::fmt::Debug for Mesh {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Mesh(vertices={:?}, indices={:?}, facets={:?}, material_id={}",
+            self.vertices,
+            self.indices,
+            self.facets,
+            self.material_id
+                .map_or("None".to_string(), |id: usize| id.to_string()),
+        )
     }
 }
 

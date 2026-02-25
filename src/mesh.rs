@@ -2,6 +2,16 @@ use glam::Vec4Swizzles;
 
 use crate::{Float, Mat4, PI, Vec2, Vec3};
 
+// std::mem::size_of::<Vertex>() / 8 = 18
+pub const VERTEX_STRIDE: usize = 18;
+pub const POS_OFFSET: usize = 0;
+pub const TEX_OFFSET: usize = 3;
+pub const NORMAL_OFFSET: usize = 5;
+pub const TANGENT_OFFSET: usize = 8;
+pub const BITANGENT_OFFSET: usize = 11;
+pub const COLOR_OFFSET: usize = 14;
+pub const COLOR_MODE_OFFSET: usize = 17;
+
 pub const EPSILON_F32_INTERSECT_TRIANGLE: Float = 1e-3;
 // pub const EPSILON_F32_INTERSECT_TRIANGLE: f32 = std::f32::EPSILON;
 
@@ -34,6 +44,7 @@ pub const EPSILON_F32_INTERSECT_TRIANGLE: Float = 1e-3;
 //     v.to_array().into_bound_py_any(py)
 // }
 
+// Do not reorder Vertex fields without updating offsets in GPU code and Pyo3 POD bindings.
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {

@@ -1,7 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
 use image::GenericImageView;
-use numpy::{PyArrayMethods, ToPyArray};
 use pyo3::prelude::*;
 
 use crate::{Float, Vec3};
@@ -275,6 +274,26 @@ impl std::fmt::Debug for Material {
     }
 }
 
+fn vertex_matrix<'a>(mesh: &'a crate::mesh::Mesh) -> ndarray::ArrayView2<'a, f64> {
+    let slice: &[f64] = bytemuck::cast_slice(&mesh.vertices);
+
+    ndarray::ArrayView1::from(slice)
+        .into_shape_with_order((mesh.vertices.len(), crate::mesh::VERTEX_STRIDE))
+        .unwrap()
+}
+
+fn vertex_matrix_array<'a>(
+    slf: Bound<'_, Mesh>,
+    start: usize,
+    size: usize,
+) -> Bound<'_, numpy::PyArray2<f64>> {
+    let mesh = slf.borrow();
+    let mesh = mesh.inner.borrow();
+    let arr = vertex_matrix(&mesh);
+    let arr = arr.slice(ndarray::s![.., start..start + size]);
+    unsafe { numpy::PyArray2::borrow_from_array(&arr, slf.into_any()) }
+}
+
 #[pyclass(unsendable)]
 pub struct Mesh {
     pub inner: Rc<RefCell<crate::mesh::Mesh>>,
@@ -298,36 +317,74 @@ impl Mesh {
         });
     }
 
-    fn __len__(&self) -> usize {
-        self.inner.borrow().vertices.len()
-    }
-
-    fn __getitem__(&self, index: usize) -> PyResult<VertexView> {
-        let mesh = self.inner.borrow();
-        if index >= mesh.vertices.len() {
-            return Err(pyo3::exceptions::PyIndexError::new_err("out of bounds"));
-        }
-
-        Ok(VertexView {
+    #[getter]
+    fn vertices(&self) -> VerticesView {
+        VerticesView {
             mesh: self.inner.clone(),
-            index,
-        })
+        }
     }
 
     #[getter]
-    fn positions<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray2<f64>> {
-        let py = slf.py();
+    fn indices(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray1<u32>> {
+        let inner = &slf.borrow().inner;
+        let slice = &inner.borrow().indices;
+        let arr = ndarray::ArrayView1::from(slice);
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
+    }
+
+    #[getter]
+    fn facets(&self) -> FacetsView {
+        FacetsView {
+            mesh: self.inner.clone(),
+        }
+    }
+
+    #[getter]
+    fn positions(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::POS_OFFSET, 3)
+    }
+
+    #[getter]
+    fn texs(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::TEX_OFFSET, 2)
+    }
+
+    #[getter]
+    fn normals(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::NORMAL_OFFSET, 3)
+    }
+
+    #[getter]
+    fn tangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::TANGENT_OFFSET, 3)
+    }
+
+    #[getter]
+    fn bitangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::BITANGENT_OFFSET, 3)
+    }
+
+    #[getter]
+    fn colors(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+        vertex_matrix_array(slf, crate::mesh::COLOR_OFFSET, 3)
+    }
+
+    #[getter]
+    fn color_modes(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray1<u32>> {
+        let start = crate::mesh::COLOR_MODE_OFFSET * 2;
+        let size = 1;
+
         let mesh = slf.borrow();
         let mesh = mesh.inner.borrow();
 
-        let n = mesh.vertices.len();
-        let flat: &[f64] = bytemuck::cast_slice(&mesh.vertices);
-        let array = flat.to_pyarray(py).reshape([n, 18]).unwrap();
+        let slice: &[u32] = bytemuck::cast_slice(&mesh.vertices);
+        let arr = ndarray::ArrayView1::from(slice)
+            .into_shape_with_order((mesh.vertices.len(), crate::mesh::VERTEX_STRIDE * 2))
+            .unwrap();
 
-        let view = unsafe { array.as_array() };
-
-        let pos_view = view.slice(ndarray::s![.., 0..3]);
-        pos_view.to_pyarray(py)
+        let arr = arr.slice(ndarray::s![.., start..start + size]);
+        let arr = arr.flatten();
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
     }
 
     pub fn __repr__(&self) -> String {
@@ -335,151 +392,16 @@ impl Mesh {
     }
 }
 
-#[pyclass(unsendable)]
-pub struct VertexView {
-    pub mesh: Rc<RefCell<crate::mesh::Mesh>>,
-    pub index: usize,
-}
+crate::impl_mesh_view!(VerticesView, VertexView, vertices);
+crate::impl_mesh_view!(FacetsView, FacetView, facets);
 
-#[pymethods]
-impl VertexView {
-    #[getter]
-    fn pos(&self) -> [f64; 3] {
-        let mesh = self.mesh.borrow();
-        mesh.vertices[self.index].pos.to_array()
-    }
+crate::impl_mesh_field_vec!(VertexView, vertices, pos);
+crate::impl_mesh_field_vec!(VertexView, vertices, tex);
+crate::impl_mesh_field_vec!(VertexView, vertices, normal);
+crate::impl_mesh_field_vec!(VertexView, vertices, tangent);
+crate::impl_mesh_field_vec!(VertexView, vertices, bitangent);
+crate::impl_mesh_field_vec!(VertexView, vertices, color);
+crate::impl_mesh_field_scalar!(VertexView, vertices, color_mode, u32);
 
-    #[setter]
-    fn set_pos(&self, arr: [f64; 3]) {
-        let mut mesh = self.mesh.borrow_mut();
-        mesh.vertices[self.index].pos = Vec3::from_array(arr);
-    }
-
-    #[getter]
-    fn normal(&self) -> [f64; 3] {
-        let mesh = self.mesh.borrow();
-        mesh.vertices[self.index].normal.to_array()
-    }
-
-    #[setter]
-    fn set_normal(&self, arr: [f64; 3]) {
-        let mut mesh = self.mesh.borrow_mut();
-        mesh.vertices[self.index].normal = Vec3::from_array(arr);
-    }
-}
-
-/*
-#[pyclass(unsendable)]
-#[pyo3(get_all, set_all)]
-pub struct Mesh {
-    // Vec<Vertex>
-    vertices: Py<PyList>,
-
-    // Vec<u32>
-    indices: Py<PyList>,
-
-    // Vec<Facet>
-    facets: Py<PyList>,
-
-    material_id: Option<usize>,
-
-    // Vec<Vertex>
-    _vertices_before_flatten: Py<PyList>,
-}
-
-impl Mesh {
-    fn from<'py>(py: Python<'py>, mesh: crate::mesh::Mesh) -> Self {
-        let crate::mesh::Mesh {
-            vertices,
-            indices,
-            facets,
-            material_id,
-            ..
-        } = mesh;
-
-        Self {
-            vertices: PyList::new(
-                py,
-                vertices
-                    .into_iter()
-                    .map(|v| Vertex {
-                        inner: Rc::new(RefCell::new(v)),
-                    })
-                    .collect::<Vec<Vertex>>(),
-            )
-            .unwrap()
-            .into(),
-            indices: PyList::new(py, indices.into_iter().map(|idx| idx).collect::<Vec<u32>>())
-                .unwrap()
-                .into(),
-            facets: PyList::new(
-                py,
-                facets
-                    .into_iter()
-                    .map(|f| Facet {
-                        inner: Rc::new(RefCell::new(f)),
-                    })
-                    .collect::<Vec<Facet>>(),
-            )
-            .unwrap()
-            .into(),
-            material_id,
-            _vertices_before_flatten: PyList::empty(py).into(),
-        }
-    }
-}
-
-#[pymethods]
-impl Mesh {
-    #[new]
-    #[pyo3(signature = (vertices = None, indices = None, facets = None, material_id = None))]
-    fn new(
-        py: Python<'_>,
-        vertices: Option<Py<PyList>>,
-        indices: Option<Py<PyList>>,
-        facets: Option<Py<PyList>>,
-        material_id: Option<usize>,
-    ) -> Self {
-        let mut mesh = Self::from(py, crate::mesh::Mesh::new());
-
-        if let Some(vertices) = vertices {
-            let _: Vec<Vertex> = vertices.bind(py).extract().unwrap();
-            mesh.vertices = vertices;
-        }
-
-        if let Some(indices) = indices {
-            let _: Vec<u32> = indices.bind(py).extract().unwrap();
-            mesh.vertices = indices;
-        }
-
-        if let Some(facets) = facets {
-            let _: Vec<Facet> = facets.bind(py).extract().unwrap();
-            mesh.vertices = facets;
-        }
-
-        if let Some(material_id) = material_id {
-            mesh.material_id = Some(material_id);
-        }
-
-        mesh
-    }
-}
-
-#[pymethods]
-impl Mesh {
-    #[staticmethod]
-    #[pyo3(signature = (path: "str", update_pos: "Callable[[numpy.array], numpy.array]") -> "None")]
-    fn load<'py>(py: Python<'py>, path: &str, update_pos: Py<PyAny>) -> Self {
-        let update_pos = |pos: Vec3| {
-            update_pos
-                .call1(py, (pos.to_array().to_pyarray(py),))
-                .unwrap()
-                .extract::<[Float; 3]>(py)
-                .unwrap()
-                .into()
-        };
-
-        Self::from(py, crate::mesh::Mesh::load(path, update_pos))
-    }
-}
-*/
+crate::impl_mesh_field_vec!(FacetView, facets, pos);
+crate::impl_mesh_field_vec!(FacetView, facets, normal);

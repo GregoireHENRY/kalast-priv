@@ -3,12 +3,12 @@ name = "kalast"
 version = "0.1.0"
 description = "tpm for binary asteroids"
 readme = "readme.rst"
-requires-python = ">=3.14.2,<3.15"
+requires-python = ">=3.14.3,<3.15"
 dependencies = [
-    "matplotlib>=3.10.8",
-    "numpy>=2.4.0",
-    "pandas>=2.3",
-    "pyarrow>=22",
+	"matplotlib>=3.10.8",
+    "numpy>=2.4.2",
+    "pandas>=3.0",
+    "pyarrow>=23.0",
     "scipy>=1.16",
     "spiceypy>=8.0",
     "symfit>=0.5",
@@ -26,9 +26,11 @@ build-backend = "maturin"
 
 [dependency-groups]
 dev = [
-    "ipython>=9.8.0",
+    "ipython>=9.10.0",
     "maturin>=1.8.7",
     "mypy>=1.19.0",
+    "ptpython>=3.0.32",
+    "pygments>=2.19.2",
     "ruff>=0.12.1",
 ]
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from IPython import embed as bp
 from pathlib import Path  # noqa
 
 import pandas
@@ -8,7 +9,7 @@ import spiceypy as spice
 
 import kalast  # noqa
 from kalast.util import DPR, RPD  # noqa
-from kalast.spice_entities import hera, tiri, earth, moon, deimos  # noqa
+from kalast.entity import HERA, TIRI, EARTH, MOON, DEIMOS  # noqa
 
 
 FW_POS = [
@@ -24,14 +25,17 @@ FW_POS = [
 
 # Load spice
 spice.kclear()
-spice.furnsh("/Users/gregoireh/data/spice/hera/kernels/mk/hera_ops_local.tm")
+spice.furnsh(r"D:\data\spice\hera\kernels\mk\hera_ops.tm")
+
+bp()
+
 frame = "j2000"
 
-obs = hera
-cam = tiri
-bod = deimos
+obs = HERA
+cam = TIRI
+bod = DEIMOS
 
-df = pandas.read_csv("work/summary_wides.csv")
+df = pandas.read_csv(r"D:\data\hera\tiri\tiri_images_mars_swing-by.csv")
 images = df["image"].to_numpy()
 et = df["et"].to_numpy()
 filters = df["filter"].to_numpy()

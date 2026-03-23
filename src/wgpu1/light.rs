@@ -7,17 +7,17 @@ use crate::Float;
 pub struct LightUniform {
     pub position: [Float; 3],
 
-    #[cfg(feature = "calc_f32")]
-    pub _padding: u32,
-    #[cfg(not(feature = "calc_f32"))]
+    #[cfg(feature = "use_f64")]
     pub _padding: u64,
+    #[cfg(not(feature = "use_f64"))]
+    pub _padding: u32,
 
     pub color: [Float; 3],
 
-    #[cfg(feature = "calc_f32")]
-    pub _padding2: u32,
-    #[cfg(not(feature = "calc_f32"))]
+    #[cfg(feature = "use_f64")]
     pub _padding2: u64,
+    #[cfg(not(feature = "use_f64"))]
+    pub _padding2: u32,
 }
 
 impl super::buffer::UniformBindTrait for LightUniform {}

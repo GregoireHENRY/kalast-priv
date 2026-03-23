@@ -1,9 +1,14 @@
 [project]
 name = "kalast"
 version = "0.1.0"
-description = "tpm for binary asteroids"
-readme = "readme.rst"
+description = "TPM for binary asteroids"
+readme = "README.rst"
 requires-python = ">=3.14.3,<3.15"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
 dependencies = [
 	"matplotlib>=3.10.8",
     "numpy>=2.4.2",
@@ -13,16 +18,6 @@ dependencies = [
     "spiceypy>=8.0",
     "symfit>=0.5",
 ]
-
-classifiers = [
-    "Programming Language :: Rust",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-]
-
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
 
 [dependency-groups]
 dev = [
@@ -36,3 +31,7 @@ dev = [
 
 [tool.maturin]
 module-name = "kalast._rs"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"

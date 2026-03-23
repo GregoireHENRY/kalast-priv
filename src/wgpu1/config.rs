@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Float, Vec3};
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Confique, Clone, Deserialize, Serialize)]
 pub struct Config {
     #[pyo3(get, set)]
@@ -111,6 +111,8 @@ pub struct Config {
     #[pyo3(get, set)]
     pub specular_enable: bool,
 
+    pub force_color_with_tex_method: bool,
+
     #[pyo3(get, set)]
     pub models: Vec<ConfigModel>,
 }
@@ -159,6 +161,7 @@ impl Default for Config {
             ambient_strength: 0.1,
             diffuse_enable: true,
             specular_enable: false,
+            force_color_with_tex_method: false,
             models: vec![],
         }
     }
@@ -293,7 +296,7 @@ impl Config {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Confique, Clone, Deserialize, Serialize)]
 pub struct ConfigText {
     #[pyo3(get, set)]
@@ -331,7 +334,7 @@ impl ConfigText {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Confique, Clone, Deserialize, Serialize)]
 pub struct ConfigModel {
     #[pyo3(get, set)]
@@ -417,9 +420,12 @@ impl ConfigModel {
 pub struct UniformGlobal {
     pub test: u32,
     pub _padding: u32,
-    pub ambient_strength: Float,
+    pub ambient_strength: f32,
+    pub _padding2: u32,
     pub diffuse_enable: u32,
     pub specular_enable: u32,
+    pub force_color_with_tex_method: u32,
+    pub _padding3: u32,
 }
 
 impl super::buffer::UniformBindTrait for UniformGlobal {}

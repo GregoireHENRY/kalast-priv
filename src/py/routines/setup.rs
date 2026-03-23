@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct ProgressDebug {
     inner: Rc<RefCell<RsProgressDebug>>,
@@ -70,7 +70,7 @@ impl ProgressDebug {
     }
 }
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Time {
     inner: Rc<RefCell<RsTime>>,
@@ -125,7 +125,7 @@ impl Time {
     }
 }
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Body {
     // pub inner: Rc<RefCell<RsBody>>,

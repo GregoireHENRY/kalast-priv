@@ -64,7 +64,7 @@ pub const DEIMOS: Lazy<Body> = Lazy::new(|| Body {
 
 pub const DIDYMOS: Lazy<Body> = Lazy::new(|| Body {
     entity: Entity {
-        id: 65803,
+        id: -658030,
         name: "DIDYMOS".to_string(),
         frame: "DIDYMOS_FIXED".to_string(),
         label: "".to_string(),
@@ -76,7 +76,7 @@ pub const DIDYMOS: Lazy<Body> = Lazy::new(|| Body {
 
 pub const DIMORPHOS: Lazy<Body> = Lazy::new(|| Body {
     entity: Entity {
-        id: 65803,
+        id: -658031,
         name: "DIMORPHOS".to_string(),
         frame: "DIMORPHOS_FIXED".to_string(),
         label: "post_impact".to_string(),
@@ -88,7 +88,7 @@ pub const DIMORPHOS: Lazy<Body> = Lazy::new(|| Body {
 
 pub const DIMORPHOS_PRE: Lazy<Body> = Lazy::new(|| Body {
     entity: Entity {
-        id: 65803,
+        id: -658031,
         name: "DIMORPHOS".to_string(),
         frame: "DIMORPHOS_FIXED".to_string(),
         label: "pre_impact".to_string(),
@@ -121,19 +121,19 @@ pub const TIRI: Lazy<Camera> = Lazy::new(|| Camera {
 
 pub const AFC: Lazy<Camera> = Lazy::new(|| Camera {
     entity: Entity {
-        id: 0,
+        id: -91110,
         name: "HERA_AFC-1".to_string(),
         frame: "HERA_AFC-1".to_string(),
         label: "".to_string(),
     },
     px: UVec2::new(1024, 1024),
     fovy: 5.47,
-    filters: vec![]
+    filters: vec![],
 });
 
 pub const HERA: Lazy<Spacecraft> = Lazy::new(|| Spacecraft {
     entity: Entity {
-        id: 0,
+        id: -91000,
         name: "HERA_SPACECRAFT".to_string(),
         frame: "HERA_SPACECRAFT".to_string(),
         label: "".to_string(),

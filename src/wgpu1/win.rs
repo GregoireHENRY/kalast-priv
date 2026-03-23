@@ -10,11 +10,11 @@ use winit::{
 };
 
 use crate::{
-    Float, PI, Vec3,
+    Float, Vec3,
     gpu::{buffer::UniformBindTrait, light::DrawLight, model::DrawModel},
 };
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct StateStep {
@@ -81,12 +81,14 @@ impl StateStep {
     }
 }
 
-pub struct State<'win> {
+pub struct State {
     pub window: std::sync::Arc<Window>,
-    pub surface: wgpu::Surface<'win>,
+    pub instance: wgpu::Instance,
+    pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub config_surf: wgpu::SurfaceConfiguration,
+    pub surface_format: wgpu::TextureFormat,
+    pub size: winit::dpi::PhysicalSize<u32>,
     pub globals: super::buffer::UniformBind<super::config::UniformGlobal>,
     pub texts: Vec<super::text::Text>,
     // pub camera: super::scene::CameraFpsWGPU,
@@ -112,15 +114,19 @@ pub struct State<'win> {
     pub fps_counter: super::FpsCounter,
 }
 
-impl State<'_> {
-    pub async fn new(window: std::sync::Arc<Window>, config: super::config::Config) -> Self {
-        let size = window.inner_size();
-
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+impl State {
+    pub async fn new(
+        display: winit::event_loop::OwnedDisplayHandle,
+        window: std::sync::Arc<Window>,
+        config: super::config::Config,
+    ) -> Self {
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_with_display_handle(
+            Box::new(display),
+        ));
         let surface = instance.create_surface(window.clone()).unwrap();
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptionsBase {
-                power_preference: wgpu::PowerPreference::default(),
+                power_preference: wgpu::PowerPreference::HighPerformance,
                 force_fallback_adapter: false,
                 compatible_surface: Some(&surface),
             })
@@ -145,44 +151,45 @@ impl State<'_> {
             .unwrap();
 
         if config.debug_state_creation {
-            println!("device created OK");
+            println!("[STATE] device created");
         }
 
         let caps = surface.get_capabilities(&adapter);
-        let format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| f.is_srgb())
-            .unwrap_or(caps.formats[0]);
-        let config_surf = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: format,
-            width: size.width,
-            height: size.height,
-            present_mode: caps.present_modes[0],
-            alpha_mode: caps.alpha_modes[0],
-            view_formats: vec![format.add_srgb_suffix()],
-            desired_maximum_frame_latency: 2,
-        };
+
+        // let format = caps
+        //     .formats
+        //     .iter()
+        //     .copied()
+        //     .find(|f| f.is_srgb())
+        //     .unwrap_or(caps.formats[0]);
+        let mut surface_format = caps.formats[0];
+
+        let size = window.inner_size();
 
         let globals = super::config::UniformGlobal {
             test: config.global_test,
             ambient_strength: config.ambient_strength,
             diffuse_enable: config.diffuse_enable as u32,
             specular_enable: config.specular_enable as u32,
+            force_color_with_tex_method: config.force_color_with_tex_method as u32,
             ..Default::default()
         }
         .register(&device, 0);
 
-        let text_user = super::text::Text::new(&config.font, &config.texts, &device, &config_surf);
+        let text_user =
+            super::text::Text::new(&config.font, &config.texts, &device, &size, surface_format);
 
         let config_texts_info = vec![super::config::ConfigText {
             text: "kalast".to_string(),
             ..Default::default()
         }];
-        let text_info =
-            super::text::Text::new(&config.font, &config_texts_info, &device, &config_surf);
+        let text_info = super::text::Text::new(
+            &config.font,
+            &config_texts_info,
+            &device,
+            &size,
+            surface_format,
+        );
         let texts = vec![text_info, text_user];
 
         // let camera = super::scene::CameraFpsWGPU::new(
@@ -200,9 +207,9 @@ impl State<'_> {
             up_world: config.up_world,
         };
         let projection = super::scene::Projection::new(
-            config_surf.width,
-            config_surf.height,
-            config.camera_fovy * PI / 180.0,
+            size.width,
+            size.height,
+            config.camera_fovy * crate::util::DPR,
             config.camera_znear,
             config.camera_zfar,
             config.camera_projection,
@@ -236,7 +243,7 @@ impl State<'_> {
             println!("texture created OK");
         }
 
-        let depthpass = DepthPass::new(&device, &config_surf, &config);
+        let depthpass = DepthPass::new(&device, &size, surface_format, &config);
 
         if config.debug_state_creation {
             println!("depthpass created OK");
@@ -276,12 +283,8 @@ impl State<'_> {
             println!("models/instance created OK");
         }
 
-        let pipeline_hdr = super::hdr::HdrPipeline::new(
-            &device,
-            &config_surf,
-            config.enable_back_face,
-            config.wireframe,
-        );
+        let pipeline_hdr =
+            super::hdr::HdrPipeline::new(&device, &size, config.enable_back_face, config.wireframe);
 
         if config.debug_state_creation {
             println!("pipeline hdr created OK");
@@ -318,10 +321,8 @@ impl State<'_> {
             println!("environment sky created OK");
         }
 
-        let format_render = if config.hdr_enable {
-            pipeline_hdr.format
-        } else {
-            format
+        if config.hdr_enable {
+            surface_format = pipeline_hdr.format;
         };
 
         let pipeline = {
@@ -329,17 +330,17 @@ impl State<'_> {
 
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: &[
-                    &globals.layout,
-                    &camera_uniform.layout,
-                    &light.layout,
-                    &texture_bind_group_layout,
+                    Some(&globals.layout),
+                    Some(&camera_uniform.layout),
+                    Some(&light.layout),
+                    Some(&texture_bind_group_layout),
                 ],
                 ..Default::default()
             });
             super::render::create_render_pipeline(
                 &device,
                 &layout,
-                format_render,
+                surface_format,
                 //Some(super::texture::Texture::DEPTH_AND_STENCIL_FORMAT),
                 Some(super::texture::Texture::DEPTH_FORMAT),
                 &[
@@ -360,14 +361,14 @@ impl State<'_> {
         let pipeline_light = {
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&camera_uniform.layout, &light.layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&camera_uniform.layout), Some(&light.layout)],
+                immediate_size: 0,
             });
             let shader = wgpu::include_wgsl!("../../shaders/light.wgsl");
             super::render::create_render_pipeline(
                 &device,
                 &layout,
-                format_render,
+                surface_format,
                 Some(super::texture::Texture::DEPTH_FORMAT),
                 &[crate::mesh::Vertex::descriptor()],
                 shader,
@@ -384,14 +385,14 @@ impl State<'_> {
         let pipeline_sky = {
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Sky Pipeline Layout"),
-                bind_group_layouts: &[&camera_uniform.layout, &environment_layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&camera_uniform.layout), Some(&environment_layout)],
+                immediate_size: 0,
             });
             let shader = wgpu::include_wgsl!("../../shaders/sky.wgsl");
             super::render::create_render_pipeline(
                 &device,
                 &layout,
-                format_render,
+                surface_format,
                 Some(super::texture::Texture::DEPTH_FORMAT),
                 &[],
                 shader,
@@ -423,7 +424,7 @@ impl State<'_> {
         };
 
         if config.start_paused {
-            println!("Paused at start")
+            println!("[STATE] paused at start")
         }
 
         if config.debug_state_creation {
@@ -432,10 +433,12 @@ impl State<'_> {
 
         let state = State {
             window,
+            instance,
             surface,
             device,
             queue,
-            config_surf,
+            surface_format,
+            size,
             depthpass,
             texts,
             camera,
@@ -467,16 +470,32 @@ impl State<'_> {
         &self.window
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.config_surf.width = width;
-        self.config_surf.height = height;
-        self.projection.resize(width, height);
-        self.pipeline_hdr.resize(&self.device, width, height);
-        self.surface.configure(&self.device, &self.config_surf);
-        self.depthpass.resize(&self.device, width, height);
+    pub fn configure_surface(&self) {
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: self.surface_format,
+            view_formats: vec![self.surface_format.add_srgb_suffix()],
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            width: self.size.width,
+            height: self.size.height,
+            desired_maximum_frame_latency: 2,
+            present_mode: wgpu::PresentMode::AutoVsync,
+        };
+        self.surface.configure(&self.device, &config);
+    }
+
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.size = size;
+        self.projection.resize(size.width, size.height);
+        self.pipeline_hdr
+            .resize(&self.device, size.width, size.height);
+
+        self.configure_surface();
+
+        self.depthpass.resize(&self.device, size.width, size.height);
 
         for text in &mut self.texts {
-            text.resize(width, height, &self.queue);
+            text.resize(size.width, size.height, &self.queue);
         }
 
         self.is_surface_configured = true;
@@ -539,18 +558,30 @@ impl State<'_> {
     }
 
     pub fn render(&mut self) {
-        let texture = self
-            .surface
-            .get_current_texture()
-            .expect("failed to acquire next swapchain texture");
+        let texture = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(texture) => texture,
+            wgpu::CurrentSurfaceTexture::Occluded | wgpu::CurrentSurfaceTexture::Timeout => return,
+            wgpu::CurrentSurfaceTexture::Suboptimal(_) | wgpu::CurrentSurfaceTexture::Outdated => {
+                self.configure_surface();
+                return;
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                unreachable!("No error scope registered, so validation errors will panic")
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                self.surface = self.instance.create_surface(self.window.clone()).unwrap();
+                self.configure_surface();
+                return;
+            }
+        };
 
         let view = texture.texture.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(self.config_surf.format.add_srgb_suffix()),
+            format: Some(self.surface_format.add_srgb_suffix()),
             ..Default::default()
         });
 
         if self.config.debug_state_rendering {
-            println!("state render: texture and view acquired OK")
+            println!("[STATE][render] texture and view acquired")
         }
 
         let mut encoder = self.device.create_command_encoder(&Default::default());
@@ -702,25 +733,25 @@ impl State<'_> {
         if !self.controller.handle_key(key, is_pressed) {
             match (key, is_pressed) {
                 (KeyCode::Escape, true) => {
-                    println!("key escape is pressed");
+                    println!("[STATE] key escape is pressed");
                 }
                 (KeyCode::KeyP, true) => {
                     self.is_paused = !self.is_paused;
                     println!(
-                        "pause toggled: {}",
+                        "[STATE] pause toggled: {}",
                         crate::util::bool_to_on_off(self.is_paused)
                     );
                 }
                 (KeyCode::KeyT, true) => {
                     // switch camera type
                     self.camera.toggle_type();
-                    println!("Changed camera type, now is {:?}", self.camera.typ);
+                    println!("[STATE] Changed camera type, now is {:?}", self.camera.typ);
 
                     match self.camera.typ {
                         super::scene::CameraType::Arcball => {
                             self.window.set_cursor_visible(true);
 
-                            let mid = (self.config_surf.width / 2, self.config_surf.height / 2);
+                            let mid = (self.size.width / 2, self.size.height / 2);
                             self.window
                                 .set_cursor_position(winit::dpi::PhysicalPosition::new(
                                     mid.0, mid.1,
@@ -756,13 +787,14 @@ pub struct DepthPass {
 impl DepthPass {
     pub fn new(
         device: &wgpu::Device,
-        config_surf: &wgpu::SurfaceConfiguration,
+        size: &winit::dpi::PhysicalSize<u32>,
+        format: wgpu::TextureFormat,
         config: &super::config::Config,
     ) -> Self {
         let texture = super::texture::Texture::create_depth_texture_non_comparison_sampler(
             device,
-            config_surf.width,
-            config_surf.height,
+            size.width,
+            size.height,
         );
 
         if config.debug_state_creation {
@@ -818,14 +850,14 @@ impl DepthPass {
         let pipeline = {
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&layout],
-                push_constant_ranges: &[],
+                bind_group_layouts: &[Some(&layout)],
+                immediate_size: 0,
             });
             let shader = wgpu::include_wgsl!("../../shaders/view_depth.wgsl");
             super::render::create_render_pipeline(
                 &device,
                 &layout,
-                config_surf.format,
+                format,
                 None,
                 &[crate::mesh::Vertex::descriptor()],
                 shader,
@@ -885,6 +917,7 @@ impl DepthPass {
             depth_stencil_attachment: None,
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         });
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
@@ -898,8 +931,8 @@ impl DepthPass {
 // #[pyclass(unsendable)]
 // pub struct App<F, F2> {
 // pub struct App<F> {
-pub struct App<'win> {
-    pub state: Option<State<'win>>,
+pub struct App {
+    pub state: Option<State>,
     pub last_time: std::time::Instant,
     pub resumed: usize,
 
@@ -916,7 +949,7 @@ pub struct App<'win> {
 
 // impl<F, F2> App<F, F2> {
 // impl<F> App<F> {
-impl App<'_> {
+impl App {
     pub fn new(
         config: super::config::Config,
         // closure_update_state: Box<dyn FnMut(PyRefMut<State>)>,
@@ -956,23 +989,27 @@ impl App<'_> {
 
 // impl<F, F2> ApplicationHandler for App<F, F2>
 // impl<F> ApplicationHandler for App<F>
-impl ApplicationHandler for App<'_>
+impl ApplicationHandler for App
 // where
 // F: Fn(StateStep) -> Option<StateStep>,
 // F2: Fn(&mut State),
 {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+    fn resumed(&mut self, ev: &winit::event_loop::ActiveEventLoop) {
         self.resumed += 1;
         if let Some(config) = self._config.take() {
-            println!("resumed config taken");
+            println!("[APP] resumed config taken");
             let attrs = winit::window::WindowAttributes::default()
                 .with_inner_size(winit::dpi::PhysicalSize::new(config.width, config.height));
 
-            let window = std::sync::Arc::new(event_loop.create_window(attrs).unwrap());
-            self.state = Some(pollster::block_on(State::new(window.clone(), config)));
+            let window = std::sync::Arc::new(ev.create_window(attrs).unwrap());
+            self.state = Some(pollster::block_on(State::new(
+                ev.owned_display_handle(),
+                window.clone(),
+                config,
+            )));
             window.request_redraw();
         } else {
-            println!("resumed");
+            println!("[APP] resumed");
             self.state.as_ref().unwrap().window.request_redraw();
         }
     }
@@ -1044,19 +1081,19 @@ impl ApplicationHandler for App<'_>
                 let dt = now - self.last_time;
                 self.last_time = now;
                 // state.update(dt, &self.closure_update_state);
-                println!(
-                    "going to update (iteration={},resumed={})",
-                    state.iteration, self.resumed
-                );
+                // println!(
+                //     "going to update (iteration={},resumed={})",
+                //     state.iteration, self.resumed
+                // );
                 state.update(dt);
-                println!(
-                    "update done (iteration={},resumed={})",
-                    state.iteration, self.resumed
-                );
+                // println!(
+                //     "update done (iteration={},resumed={})",
+                //     state.iteration, self.resumed
+                // );
                 state.render();
 
                 state.get_window().request_redraw();
-                event_loop.exit();
+                // event_loop.exit();
 
                 // if !self.has_been_shown_once {
                 //     println!("exit first run loop on demand");
@@ -1067,7 +1104,7 @@ impl ApplicationHandler for App<'_>
                 // }
             }
             WindowEvent::Resized(size) => {
-                state.resize(size.width, size.height);
+                state.resize(size);
             }
 
             // not sure if useful
@@ -1110,7 +1147,7 @@ impl ApplicationHandler for App<'_>
         };
 
         if state.camera.typ == super::scene::CameraType::WASD {
-            let mid = (state.config_surf.width / 2, state.config_surf.height / 2);
+            let mid = (state.size.width / 2, state.size.height / 2);
             state
                 .window
                 .set_cursor_position(winit::dpi::PhysicalPosition::new(mid.0, mid.1))

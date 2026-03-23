@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 
 use crate::{Float, tpm::properties::Properties as RsProperties};
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Properties {
     pub inner: Rc<RefCell<RsProperties>>,

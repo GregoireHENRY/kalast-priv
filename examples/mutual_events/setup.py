@@ -20,6 +20,7 @@ ECID_NAME = {
     3: "total secondary eclipse",
 }
 
+
 date_impact = "2022-09-26"
 
 # timeline to cover

@@ -14,7 +14,7 @@ pub fn flattening_radius(radii: &Vec3) -> Float {
     (radii.x - radii.z) / radii.x
 }
 
-pub fn trapez(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
+pub fn trapez(y: ArrayView1<Float>, x: ArrayView1<Float>) -> Float {
     let mut r = 0.0;
 
     for ii in 0..(x.len() - 1) {
@@ -25,7 +25,7 @@ pub fn trapez(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
     r
 }
 
-pub fn simpson_1_3(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
+pub fn simpson_1_3(y: ArrayView1<Float>, x: ArrayView1<Float>) -> Float {
     let mut r = 0.0;
 
     for ii in (0..x.len()).step_by(2) {
@@ -36,7 +36,7 @@ pub fn simpson_1_3(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
     r
 }
 
-pub fn simpson_3_8(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
+pub fn simpson_3_8(y: ArrayView1<Float>, x: ArrayView1<Float>) -> Float {
     let mut r = 0.0;
 
     for ii in (0..x.len()).step_by(3) {
@@ -47,7 +47,7 @@ pub fn simpson_3_8(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
     r
 }
 
-pub fn boole(y: ArrayView1<f64>, x: ArrayView1<f64>) -> f64 {
+pub fn boole(y: ArrayView1<Float>, x: ArrayView1<Float>) -> Float {
     let mut r = 0.0;
 
     for ii in (0..x.len()).step_by(4) {
@@ -93,28 +93,34 @@ pub(crate) mod py {
     }
 
     #[pyfunction]
-    pub fn trapez(y: PyReadonlyArray1<'_, f64>, x: PyReadonlyArray1<'_, f64>) -> PyResult<f64> {
+    pub fn trapez(
+        y: PyReadonlyArray1<'_, Float>,
+        x: PyReadonlyArray1<'_, Float>,
+    ) -> PyResult<Float> {
         Ok(super::trapez(y.as_array(), x.as_array()))
     }
 
     #[pyfunction]
     pub fn simpson_1_3(
-        y: PyReadonlyArray1<'_, f64>,
-        x: PyReadonlyArray1<'_, f64>,
-    ) -> PyResult<f64> {
+        y: PyReadonlyArray1<'_, Float>,
+        x: PyReadonlyArray1<'_, Float>,
+    ) -> PyResult<Float> {
         Ok(super::simpson_1_3(y.as_array(), x.as_array()))
     }
 
     #[pyfunction]
     pub fn simpson_3_8(
-        y: PyReadonlyArray1<'_, f64>,
-        x: PyReadonlyArray1<'_, f64>,
-    ) -> PyResult<f64> {
+        y: PyReadonlyArray1<'_, Float>,
+        x: PyReadonlyArray1<'_, Float>,
+    ) -> PyResult<Float> {
         Ok(super::simpson_3_8(y.as_array(), x.as_array()))
     }
 
     #[pyfunction]
-    pub fn boole(y: PyReadonlyArray1<'_, f64>, x: PyReadonlyArray1<'_, f64>) -> PyResult<f64> {
+    pub fn boole(
+        y: PyReadonlyArray1<'_, Float>,
+        x: PyReadonlyArray1<'_, Float>,
+    ) -> PyResult<Float> {
         Ok(super::boole(y.as_array(), x.as_array()))
     }
 }

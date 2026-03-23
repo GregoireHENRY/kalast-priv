@@ -133,21 +133,27 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .set_item("kalast._rs.entity", entity)?;
 
     let mesh = PyModule::new(m.py(), "mesh")?;
-    /*
-    pyadd_f!(mesh, crate::mesh::py::load_image);
-    pyadd_f!(mesh, crate::mesh::py::normal_facet);
-    pyadd_f!(mesh, crate::mesh::py::area_facet);
-    pyadd_f!(mesh, crate::mesh::py::is_point_in_or_on);
-    pyadd_f!(mesh, crate::mesh::py::is_point_in_or_on_triangle);
-    pyadd_f!(mesh, crate::mesh::py::is_facing_plane);
-    pyadd_f!(mesh, crate::mesh::py::is_not_parallel_to_plane);
-    pyadd_f!(mesh, crate::mesh::py::intersect_plane);
-    pyadd_f!(mesh, crate::mesh::py::intersect_triangle);
-    pyadd_f!(mesh, crate::mesh::py::intersect_triangle_moller_trumblore);
-    pyadd_f!(mesh, crate::mesh::py::intersect_mesh);
+
+    mesh.add_class::<mesh::Vertex>()?;
+    mesh.add_class::<mesh::Facet>()?;
+    mesh.add_class::<mesh::Material>()?;
+    mesh.add_class::<mesh::Mesh>()?;
+    // mesh.add_class::<crate::mesh::Model>()?;
+
+    pyadd_f!(mesh, mesh::load_image);
+    pyadd_f!(mesh, mesh::normal_facet);
+    pyadd_f!(mesh, mesh::area_facet);
+    pyadd_f!(mesh, mesh::is_point_in_or_on);
+    pyadd_f!(mesh, mesh::is_point_in_or_on_triangle);
+    pyadd_f!(mesh, mesh::is_facing_plane);
+    pyadd_f!(mesh, mesh::is_not_parallel_to_plane);
+    pyadd_f!(mesh, mesh::intersect_plane);
+    pyadd_f!(mesh, mesh::intersect_triangle);
+    pyadd_f!(mesh, mesh::intersect_triangle_moller_trumblore);
+    pyadd_f!(mesh, mesh::intersect_mesh);
     pyadd_f!(mesh, crate::mesh::view_factor_scalar_with_area);
     pyadd_f!(mesh, crate::mesh::view_factor_scalar);
-    pyadd_f!(mesh, crate::mesh::py::view_factor_facets);
+    pyadd_f!(mesh, mesh::view_factor_facets);
     pyadd_f!(mesh, crate::mesh::largest_slope_angle_sphere);
     pyadd_f!(mesh, crate::mesh::curvature_radius);
     pyadd_f!(mesh, crate::mesh::curvature_diameter_from_radius);
@@ -155,18 +161,8 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     pyadd_f!(mesh, crate::mesh::z_in_crater);
     pyadd_f!(mesh, crate::mesh::rms_slope);
     pyadd_f!(mesh, crate::mesh::rms_slope_hemisphere);
-    pyadd_f!(mesh, crate::mesh::py::rms_slope_terrain);
+    pyadd_f!(mesh, mesh::rms_slope_terrain);
     pyadd_f!(mesh, crate::mesh::distribution_slope_angles);
-    */
-
-    mesh.add_class::<mesh::Vertex>()?;
-    mesh.add_class::<mesh::Facet>()?;
-    mesh.add_class::<mesh::Material>()?;
-    mesh.add_class::<mesh::Mesh>()?;
-
-    /*
-    mesh.add_class::<crate::mesh::Model>()?;
-    */
 
     m.add_submodule(&mesh)?;
     py.import("sys")?
@@ -249,13 +245,7 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .getattr("modules")?
         .set_item("kalast._rs.gpu", &gpu)?;
 
-    let compute = PyModule::new(gpu.py(), "compute")?;
-    pyadd_f!(compute, crate::gpu::compute::run);
-    gpu.add_submodule(&compute)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("kalast._rs.gpu.compute", compute)?;
-
+    /*
     let win = PyModule::new(gpu.py(), "win")?;
     // pyadd_f!(win, crate::gpu::win::py_run);
     // pyadd_f!(win, crate::gpu::win::py_create);
@@ -282,6 +272,7 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     py.import("sys")?
         .getattr("modules")?
         .set_item("kalast._rs.gpu.config", config)?;
+    */
 
     let routines = PyModule::new(m.py(), "routines")?;
     m.add_submodule(&routines)?;

@@ -21,8 +21,8 @@ pub fn stencil_state(format_depth: Option<wgpu::TextureFormat>) -> Option<wgpu::
 
         wgpu::DepthStencilState {
             format,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::LessEqual),
             bias: wgpu::DepthBiasState::default(),
             stencil,
         }
@@ -82,7 +82,7 @@ pub fn create_render_pipeline(
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        multiview: None,
+        multiview_mask: None,
         cache: None,
     })
 }

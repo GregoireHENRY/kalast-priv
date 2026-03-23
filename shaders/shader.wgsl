@@ -3,6 +3,7 @@ struct UniformGlobal {
     ambient_strength: f32,
     diffuse_enable: u32,
     specular_enable: u32,
+    force_color_with_tex_method: u32,
 }
 @group(0) @binding(0)
 var<uniform> global: UniformGlobal;
@@ -106,16 +107,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var diffuse_strength: f32;
     var specular_strength: f32;
 
-    // if in.tex.x == 0.0 && in.tex.y == 0.0 {
-    if true {
-        object_color = vec4(1.0);
-        let light_dir = normalize(light.pos - in.pos);
-        let view_dir = normalize(camera.view_pos.xyz - in.pos);
-        let half_dir = normalize(view_dir + light_dir);
-        diffuse_strength = max(dot(in.normal, light_dir), 0.0);
-        specular_strength = pow(max(dot(in.normal, half_dir), 0.0), 32.0);
-    }
-    else {
+    // if global.force_color_with_tex_method == 1 {
+    if false {
         object_color = textureSample(t_diffuse, s_diffuse, in.tex);
         let object_normal = textureSample(t_normal, s_normal, in.tex);
         let tangent_normal = object_normal.xyz * 2.0 - 1.0;
@@ -125,8 +118,20 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         diffuse_strength = max(dot(tangent_normal, light_dir), 0.0);
         specular_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 32.0);
     }
+    // if in.tex.x == 0.0 && in.tex.y == 0.0 {
+    else {
+        object_color = vec4(1.0);
+        let light_dir = normalize(light.pos - in.pos);
+        let view_dir = normalize(camera.view_pos.xyz - in.pos);
+        let half_dir = normalize(view_dir + light_dir);
+        diffuse_strength = max(dot(in.normal, light_dir), 0.0);
+        specular_strength = pow(max(dot(in.normal, half_dir), 0.0), 32.0);
+    }
 
-    let ambient_color = global.ambient_strength * light.color;
+    // let ambient_color = global.ambient_strength * light.color;
+    let ambient_color = global.ambient_strength * vec3(1.0);
+    // let ambient_color = 0.5 * vec3(1.0);
+    
     let diffuse_color = diffuse_strength * light.color;
     let specular_color = specular_strength * light.color;
 

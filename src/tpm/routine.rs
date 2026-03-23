@@ -36,7 +36,7 @@ pub(crate) mod py {
         se: Float,
         k: Float,
         twodx: Float,
-    ) -> Bound<'py, PyArray1<f64>> {
+    ) -> Bound<'py, PyArray1<Float>> {
         super::update_thermal_state(
             t.as_array(),
             f,

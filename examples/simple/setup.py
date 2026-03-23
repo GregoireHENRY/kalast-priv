@@ -41,7 +41,6 @@ n0 = numpy.array([1.0, 0.0, 0.0])
 
 delta_depth = 1e-2
 
-
 v = kalast.mesh.Vertex(
     pos=[0.0, 0.0, 0.0],
     normal=[0.0, 0.0, 1.0],
@@ -54,11 +53,18 @@ f = kalast.mesh.Facet(
 )
 
 m = kalast.mesh.Mesh(
-    # vertices=[
-    #     v,
-    # ],
+    vertices=[
+        kalast.mesh.Vertex(
+            pos=[0.0, 0.0, 0.0],
+            normal=[1.0, 1.0, 1.0],
+        ),
+        kalast.mesh.Vertex(
+            pos=[3.0, 3.0, 3.0],
+            normal=[4.0, 4.0, 4.0],
+        ),
+        kalast.mesh.Vertex(
+            pos=[5.0, 5.0, 5.0],
+            normal=[6.0, 6.0, 6.0],
+        ),
+    ],
 )
-
-m.add_vertex([0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
-m.add_vertex([3.0, 3.0, 3.0], [4.0, 4.0, 4.0])
-m.add_vertex([5.0, 5.0, 5.0], [6.0, 6.0, 6.0])

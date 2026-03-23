@@ -1,6 +1,7 @@
 use glam::Vec4Swizzles;
+use pyo3::prelude::*;
 
-use crate::{Float, Mat4, PI, Vec2, Vec3};
+use crate::{Float, Mat4, Vec2, Vec3};
 
 // std::mem::size_of::<Vertex>() / 8 = 18
 pub const VERTEX_STRIDE: usize = 18;
@@ -12,8 +13,7 @@ pub const BITANGENT_OFFSET: usize = 11;
 pub const COLOR_OFFSET: usize = 14;
 pub const COLOR_MODE_OFFSET: usize = 17;
 
-pub const EPSILON_F32_INTERSECT_TRIANGLE: Float = 1e-3;
-// pub const EPSILON_F32_INTERSECT_TRIANGLE: f32 = std::f32::EPSILON;
+// pub const EPSILON_INTERSECT_TRIANGLE: Float = 1e-3;
 
 // getter glam::Vec3 to numpy
 // #[getter]
@@ -170,7 +170,7 @@ pub struct Mesh {
     pub material_id: Option<usize>,
 
     // temporary until better solution is found
-    _vertices_before_flatten: Vec<Vertex>,
+    pub(crate) _vertices_before_flatten: Vec<Vertex>,
 }
 
 impl Mesh {
@@ -405,7 +405,7 @@ impl Mesh {
         !self._vertices_before_flatten.is_empty()
     }
 
-    pub fn get_vertices_facet(&self, facet: usize) -> [&Vertex; 3] {
+    pub fn get_facet_vertices(&self, facet: usize) -> [&Vertex; 3] {
         if self.is_flat() {
             self.vertices
                 .chunks(3)
@@ -414,12 +414,12 @@ impl Mesh {
                 .next()
                 .unwrap()
         } else {
-            self.get_indices_facet(facet)
+            self.get_facet_indices(facet)
                 .map(|ii| &self.vertices[ii as usize])
         }
     }
 
-    pub fn get_indices_facet(&self, facet: usize) -> [u32; 3] {
+    pub fn get_facet_indices(&self, facet: usize) -> [u32; 3] {
         self.indices
             .chunks(3)
             .map(|c| [c[0], c[1], c[2]])
@@ -428,12 +428,12 @@ impl Mesh {
             .unwrap()
     }
 
-    pub fn get_positions_facet(&self, facet: usize) -> [&Vec3; 3] {
-        self.get_vertices_facet(facet).map(|v| &v.pos)
+    pub fn get_facet_positions(&self, facet: usize) -> [&Vec3; 3] {
+        self.get_facet_vertices(facet).map(|v| &v.pos)
     }
 
-    pub fn get_normals_facet(&self, facet: usize) -> [&Vec3; 3] {
-        self.get_vertices_facet(facet).map(|v| &v.normal)
+    pub fn get_facet_normals(&self, facet: usize) -> [&Vec3; 3] {
+        self.get_facet_vertices(facet).map(|v| &v.normal)
     }
 
     pub fn update_colors(&mut self, mode: u32, color: Vec3) {
@@ -461,72 +461,6 @@ impl std::fmt::Debug for Mesh {
         )
     }
 }
-
-/*
-#[pymethods]
-impl Mesh {
-    // Getter numpy.ndarray read and write.
-    #[getter]
-    fn indices<'py>(slf: Bound<'py, Self>) -> Bound<'py, numpy::PyArray1<u32>> {
-        let slice = &slf.borrow().indices;
-        let arr = numpy::ndarray::ArrayView1::from(slice);
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    #[pyo3(name = "update_colors")]
-    pub fn py_update_colors<'py>(
-        slf: Bound<'py, Self>,
-        mode: u32,
-        color: Bound<'py, numpy::PyArray1<Float>>,
-    ) {
-        let color = unsafe { Vec3::from_slice(color.as_slice().unwrap()) };
-        for v in &mut slf.borrow_mut().vertices {
-            v.color_mode = mode;
-            v.color = color;
-        }
-    }
-
-    #[pyo3(name = "get_vertices_facet")]
-    pub fn py_get_vertices_facet<'py>(
-        slf: Bound<'py, Self>,
-        facet: usize,
-    ) -> [Bound<'py, Vertex>; 3] {
-        slf.borrow()
-            .get_vertices_facet(facet)
-            .map(|p| p.into_pyobject(slf.py()).unwrap())
-    }
-
-    #[pyo3(name = "get_positions_facet")]
-    pub fn py_get_positions_facet<'py>(
-        slf: Bound<'py, Self>,
-        facet: usize,
-    ) -> [Bound<'py, PyArray1<Float>>; 3] {
-        slf.borrow()
-            .get_positions_facet(facet)
-            .map(|p| p.as_ref().to_pyarray(slf.py()))
-    }
-
-    #[pyo3(name = "get_normals_facet")]
-    pub fn py_get_normals_facet<'py>(
-        slf: Bound<'py, Self>,
-        facet: usize,
-    ) -> [Bound<'py, PyArray1<Float>>; 3] {
-        slf.borrow()
-            .get_normals_facet(facet)
-            .map(|p| p.as_ref().to_pyarray(slf.py()))
-    }
-
-    #[pyo3(name = "intersect", signature = (p, u, exit_first=false))]
-    pub fn py_intersect<'py>(
-        slf: Bound<'py, Self>,
-        p: numpy::PyReadonlyArray1<'py, Float>,
-        u: numpy::PyReadonlyArray1<'py, Float>,
-        exit_first: bool,
-    ) -> Option<(usize, Bound<'py, numpy::PyArray1<Float>>)> {
-        py::intersect_mesh(slf, p, u, exit_first)
-    }
-}
-*/
 
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
@@ -722,27 +656,6 @@ impl Model {
     }
 }
 
-/*
-#[pymethods]
-impl Model {
-    #[new]
-    #[pyo3(signature = (path: "str", update_pos: "Callable[[numpy.array], numpy.array]") -> "None")]
-    pub fn py_load(path: &str, update_pos: Py<PyAny>) -> Self {
-        let update_pos = |pos: Vec3| {
-            Python::attach(|py| {
-                update_pos
-                    .call1(py, (pos.to_array().to_pyarray(py),))
-                    .unwrap()
-                    .extract::<[Float; 3]>(py)
-                    .unwrap()
-            })
-            .into()
-        };
-        Self::load(path, update_pos)
-    }
-}
-*/
-
 pub fn normal_facet(ab: &Vec3, ac: &Vec3) -> Vec3 {
     // ab: b - a
     // ac: c - a
@@ -755,13 +668,13 @@ pub fn area_facet(ab: &Vec3, ac: &Vec3) -> Float {
     0.5 * ab.angle_between(*ac).sin() * ab.length() * ac.length()
 }
 
-fn is_point_in_or_on(p1: &Vec3, p2: &Vec3, a: &Vec3, b: &Vec3) -> bool {
+pub fn is_point_in_or_on(p1: &Vec3, p2: &Vec3, a: &Vec3, b: &Vec3) -> bool {
     let cp1 = (b - a).cross(p1 - a);
     let cp2 = (b - a).cross(p2 - a);
     cp1.dot(cp2) >= 0.0
 }
 
-fn is_point_in_or_on_triangle(p: &Vec3, a: &Vec3, b: &Vec3, c: &Vec3) -> bool {
+pub fn is_point_in_or_on_triangle(p: &Vec3, a: &Vec3, b: &Vec3, c: &Vec3) -> bool {
     // In triangle means if it resides within the boundaries of the triangle, not the plane, the 3d space "above" and "below".
     // a, b, c: vertices triangle
     is_point_in_or_on(p, a, b, c) && is_point_in_or_on(p, b, c, a) && is_point_in_or_on(p, c, a, b)
@@ -822,11 +735,11 @@ pub fn intersect_triangle_moller_trumbore(
     // println!("p={} u={} n={}", p, u, n);
 
     // test ray parallel to triangle
-    if det > -EPSILON_F32_INTERSECT_TRIANGLE && det < EPSILON_F32_INTERSECT_TRIANGLE {
-        // println!("PARALLEL");
+    if det > -crate::util::EPSILON && det < crate::util::EPSILON {
+        // println!("PARALLEL det={}", det);
         return None;
     }
-    // println!("NOT PARALLEL");
+    // println!("NOT PARALLEL det={}", det);
 
     // test ray not facing triangle
     // this is not part of the original Möller–Trumbore algo
@@ -856,12 +769,14 @@ pub fn intersect_triangle_moller_trumbore(
 
     // println!("t={}, u={}, n={}", t, u, n);
 
-    if t > EPSILON_F32_INTERSECT_TRIANGLE {
+    if t > crate::util::EPSILON {
         // ray intersection
+        // println!("lucky!!");
         let intersection_point = p + u * t;
         return Some(intersection_point);
     } else {
         // This means that there is a line intersection but not a ray intersection.
+        // println!("unlucky..");
         return None;
     }
 }
@@ -931,6 +846,7 @@ pub fn intersect_mesh(mesh: &Mesh, p: &Vec3, u: &Vec3, exit_first: bool) -> Opti
 }
 
 /// Compute the view factor between a facet A and B with area of facet B.
+#[pyfunction]
 pub fn view_factor_scalar_with_area(
     area_b: Float,
     angle_at_a: Float,
@@ -942,8 +858,9 @@ pub fn view_factor_scalar_with_area(
 
 /// View factor between facet A and B but without area of facet B.
 /// You can actually multiply by the area of facet A instead of B if A is transmitting energy to B.
+#[pyfunction]
 pub fn view_factor_scalar(angle_at_a: Float, angle_at_b: Float, distance_a2b: Float) -> Float {
-    angle_at_a.cos() * angle_at_b.cos() / (PI * distance_a2b.powi(2))
+    angle_at_a.cos() * angle_at_b.cos() / (crate::util::PI * distance_a2b.powi(2))
 }
 
 /// Compute the view factor between facet A and B.
@@ -976,7 +893,7 @@ pub fn view_factor_facets(face_a: &Facet, face_b: &Facet, trans_b2a: &Mat4) -> F
         .angle_between(-unit_a2b);
 
     // Another condition is one that was actually mentioned earlier: angles must be smaller than 90°.
-    if angle_at_a >= PI / 2.0 || angle_at_b >= PI / 2.0 {
+    if angle_at_a >= crate::util::PI / 2.0 || angle_at_b >= crate::util::PI / 2.0 {
         return 0.0;
     }
 
@@ -988,6 +905,7 @@ pub fn view_factor_facets(face_a: &Facet, face_b: &Facet, trans_b2a: &Mat4) -> F
 ///
 /// S: curvature diameter
 #[allow(non_snake_case)]
+#[pyfunction]
 pub fn largest_slope_angle_sphere(S: Float) -> Float {
     (1.0 - 2.0 * S).acos()
 }
@@ -996,6 +914,7 @@ pub fn largest_slope_angle_sphere(S: Float) -> Float {
 ///
 /// g: largest slope angle
 #[allow(non_snake_case)]
+#[pyfunction]
 pub fn curvature_diameter_sphere(S: Float) -> Float {
     (1.0 - S.cos()) / 2.0
 }
@@ -1004,6 +923,7 @@ pub fn curvature_diameter_sphere(S: Float) -> Float {
 ///
 /// r: radius crater
 /// d: depth crater
+#[pyfunction]
 pub fn curvature_radius(r: Float, d: Float) -> Float {
     (r.powi(2) + d.powi(2)) / (2.0 * d)
 }
@@ -1013,6 +933,7 @@ pub fn curvature_radius(r: Float, d: Float) -> Float {
 /// R: curvature radius
 /// d: depth crater
 #[allow(non_snake_case)]
+#[pyfunction]
 pub fn curvature_diameter_from_radius(d: Float, R: Float) -> Float {
     d / (2.0 * R)
 }
@@ -1023,6 +944,7 @@ pub fn curvature_diameter_from_radius(d: Float, R: Float) -> Float {
 /// r: radius crater
 /// d: depth crater
 #[allow(non_snake_case)]
+#[pyfunction]
 pub fn z_in_crater(x: Float, y: Float, r: Float, d: Float) -> Float {
     let R = curvature_radius(r, d);
     R - d - (R.powi(2) - x.powi(2) - y.powi(2)).sqrt()
@@ -1032,6 +954,7 @@ pub fn z_in_crater(x: Float, y: Float, r: Float, d: Float) -> Float {
 ///
 /// f: coverage
 /// g: largest slope angle
+#[pyfunction]
 pub fn rms_slope(f: Float, g: Float) -> Float {
     (f / 2.0 * (g.powi(2) - (g * g.cos() - g.sin()).powi(2) / g.sin().powi(2))).sqrt()
 }
@@ -1039,6 +962,7 @@ pub fn rms_slope(f: Float, g: Float) -> Float {
 /// RMS slope in case of hemispherical crater, in radian
 ///
 /// f: coverage
+#[pyfunction]
 pub fn rms_slope_hemisphere(f: Float) -> Float {
     49.0 * f.sqrt()
 }
@@ -1061,199 +985,7 @@ pub fn rms_slope_terrain(
     (s1 / s2).sqrt()
 }
 
+#[pyfunction]
 pub fn distribution_slope_angles(theta: Float, a: Float, b: Float) -> Float {
     a * (-theta.tan().powi(2) / b).exp() * theta.sin() / theta.cos().powi(2)
 }
-
-/*
-pub(crate) mod py {
-    use image::GenericImageView;
-    use numpy::ToPyArray;
-    use pyo3::prelude::*;
-
-    use crate::{Float, Vec3};
-
-    type Array<'py> = numpy::PyReadonlyArray1<'py, Float>;
-    type Array2<'py> = numpy::PyReadonlyArray2<'py, Float>;
-
-    #[pyfunction]
-    pub fn load_image(path: &str) -> ((u32, u32), Vec<u8>) {
-        let img = super::load_image(path);
-        (img.dimensions(), img.into_bytes())
-    }
-
-    // &glam::Vec3::new(
-    //     *ab.get(0).unwrap(),
-    //     *ab.get(1).unwrap(),
-    //     *ab.get(2).unwrap(),
-    // )
-
-    // let mut v1 = Array1::zeros(3);
-    // for (i, e) in v1.iter_mut().enumerate() {
-    //     *e = v[i];
-    // }
-    // v1.to_pyarray(py)
-    #[pyfunction]
-    pub fn normal_facet<'py>(
-        py: Python<'py>,
-        ab: Array<'py>,
-        ac: Array<'py>,
-    ) -> Bound<'py, numpy::PyArray1<Float>> {
-        super::normal_facet(
-            &Vec3::from_slice(ab.as_slice().unwrap()),
-            &Vec3::from_slice(ac.as_slice().unwrap()),
-        )
-        .to_array()
-        .to_pyarray(py)
-    }
-
-    #[pyfunction]
-    pub fn area_facet(ab: Array<'_>, ac: Array<'_>) -> PyResult<Float> {
-        Ok(super::area_facet(
-            &Vec3::from_slice(ab.as_slice().unwrap()),
-            &Vec3::from_slice(ac.as_slice().unwrap()),
-        ) as _)
-    }
-
-    #[pyfunction]
-    pub fn is_point_in_or_on(
-        p1: Array<'_>,
-        p2: Array<'_>,
-        a: Array<'_>,
-        b: Array<'_>,
-    ) -> PyResult<bool> {
-        Ok(super::is_point_in_or_on(
-            &Vec3::from_slice(p1.as_slice().unwrap()),
-            &Vec3::from_slice(p2.as_slice().unwrap()),
-            &Vec3::from_slice(a.as_slice().unwrap()),
-            &Vec3::from_slice(b.as_slice().unwrap()),
-        ))
-    }
-
-    #[pyfunction]
-    pub fn is_point_in_or_on_triangle(
-        p: Array<'_>,
-        a: Array<'_>,
-        b: Array<'_>,
-        c: Array<'_>,
-    ) -> PyResult<bool> {
-        Ok(super::is_point_in_or_on_triangle(
-            &Vec3::from_slice(p.as_slice().unwrap()),
-            &Vec3::from_slice(a.as_slice().unwrap()),
-            &Vec3::from_slice(b.as_slice().unwrap()),
-            &Vec3::from_slice(c.as_slice().unwrap()),
-        ))
-    }
-
-    #[pyfunction]
-    pub fn is_facing_plane<'py>(u: Array<'_>, n: Array<'_>) -> PyResult<bool> {
-        Ok(super::is_facing_plane(
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            &Vec3::from_slice(n.as_slice().unwrap()),
-        ))
-    }
-
-    #[pyfunction]
-    pub fn is_not_parallel_to_plane<'py>(u: Array<'_>, n: Array<'_>) -> PyResult<bool> {
-        Ok(super::is_not_parallel_to_plane(
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            &Vec3::from_slice(n.as_slice().unwrap()),
-        ))
-    }
-
-    #[pyfunction]
-    #[pyo3(signature = (p, u, a, n))]
-    pub fn intersect_plane<'py>(
-        py: Python<'py>,
-        p: Array<'_>,
-        u: Array<'_>,
-        a: Array<'_>,
-        n: Array<'_>,
-    ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
-        super::intersect_plane(
-            &Vec3::from_slice(p.as_slice().unwrap()),
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            &Vec3::from_slice(a.as_slice().unwrap()),
-            &Vec3::from_slice(n.as_slice().unwrap()),
-        )
-        .map(|v| v.to_array().to_pyarray(py))
-    }
-
-    #[pyfunction]
-    #[pyo3(signature = (p, u, a, b, c, n))]
-    pub fn intersect_triangle<'py>(
-        py: Python<'py>,
-        p: Array<'_>,
-        u: Array<'_>,
-        a: Array<'_>,
-        b: Array<'_>,
-        c: Array<'_>,
-        n: Array<'_>,
-    ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
-        super::intersect_triangle(
-            &Vec3::from_slice(p.as_slice().unwrap()),
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            &Vec3::from_slice(a.as_slice().unwrap()),
-            &Vec3::from_slice(b.as_slice().unwrap()),
-            &Vec3::from_slice(c.as_slice().unwrap()),
-            &Vec3::from_slice(n.as_slice().unwrap()),
-        )
-        .map(|v| v.to_array().to_pyarray(py))
-    }
-
-    #[pyfunction]
-    #[pyo3(signature = (p, u, a, b, c))]
-    pub fn intersect_triangle_moller_trumblore<'py>(
-        py: Python<'py>,
-        p: Array<'_>,
-        u: Array<'_>,
-        a: Array<'_>,
-        b: Array<'_>,
-        c: Array<'_>,
-    ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
-        super::intersect_triangle_moller_trumbore(
-            &Vec3::from_slice(p.as_slice().unwrap()),
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            &Vec3::from_slice(a.as_slice().unwrap()),
-            &Vec3::from_slice(b.as_slice().unwrap()),
-            &Vec3::from_slice(c.as_slice().unwrap()),
-        )
-        .map(|v| v.to_array().to_pyarray(py))
-    }
-
-    #[pyfunction]
-    #[pyo3(signature = (mesh, p, u, exit_first=false))]
-    pub fn intersect_mesh<'py>(
-        mesh: Bound<'py, super::Mesh>,
-        p: Array<'_>,
-        u: Array<'_>,
-        exit_first: bool,
-    ) -> Option<(usize, Bound<'py, numpy::PyArray1<Float>>)> {
-        super::intersect_mesh(
-            &mesh.borrow(),
-            &Vec3::from_slice(p.as_slice().unwrap()),
-            &Vec3::from_slice(u.as_slice().unwrap()),
-            exit_first,
-        )
-        .map(|(ii, v)| (ii, v.to_array().to_pyarray(mesh.py())))
-    }
-
-    #[pyfunction]
-    pub fn view_factor_facets(
-        face_a: Bound<'_, super::Facet>,
-        face_b: Bound<'_, super::Facet>,
-        trans_b2a: Array2<'_>,
-    ) -> Float {
-        super::view_factor_facets(
-            &face_a.borrow(),
-            &face_b.borrow(),
-            &crate::Mat4::from_cols_slice(trans_b2a.as_slice().unwrap()).transpose(),
-        )
-    }
-
-    #[pyfunction]
-    pub fn rms_slope_terrain(theta: Array<'_>, a: Array<'_>) -> PyResult<Float> {
-        Ok(super::rms_slope_terrain(theta.as_array(), a.as_array()))
-    }
-}
-*/

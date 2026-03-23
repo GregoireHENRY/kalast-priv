@@ -9,7 +9,8 @@ impl Text {
         font: &str,
         configs: &[super::config::ConfigText],
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
+        size: &winit::dpi::PhysicalSize<u32>,
+        format: wgpu::TextureFormat,
     ) -> Self {
         let data = std::fs::read(font).unwrap();
         let font = wgpu_text::glyph_brush::ab_glyph::FontArc::try_from_vec(data).unwrap();
@@ -19,7 +20,7 @@ impl Text {
 
         let brush = wgpu_text::BrushBuilder::using_font(font)
             .with_depth_stencil(depth_stencil)
-            .build(device, config.width, config.height, config.format);
+            .build(device, size.width, size.height, format);
 
         let sections = configs
             .iter()

@@ -32,7 +32,7 @@ impl<'a> TextRendererMsdf<'a> {
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Linear,
             anisotropy_clamp: 16,
             ..Default::default()
         });

@@ -84,21 +84,21 @@ pub const fn diffusivity(k: Float, p: Float, c: Float) -> Float {
 }
 
 #[pyfunction]
-pub fn skin_depth_1(d: f64, p: f64) -> f64 {
+pub fn skin_depth_1(d: Float, p: Float) -> Float {
     // skin depth @ e^-1
     //
     // d: diffusivity (...)
     // p: density (...)
-    (d * p / std::f64::consts::PI).sqrt()
+    (d * p / crate::util::PI).sqrt()
 }
 
 #[pyfunction]
-pub fn skin_depth_2pi(d: f64, p: f64) -> f64 {
+pub fn skin_depth_2pi(d: Float, p: Float) -> Float {
     // skin depth @ e^-2pi
     //
     // d: diffusivity (...)
     // p: density (...)
-    (4.0 * std::f64::consts::PI * d * p).sqrt()
+    (4.0 * crate::util::PI * d * p).sqrt()
 }
 
 #[derive(Clone, Default)]

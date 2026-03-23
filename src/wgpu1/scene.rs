@@ -16,29 +16,26 @@ pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
     Vec4::new(0.0, 0.0, 0.5, 1.0),
 );
 
-#[cfg(feature = "calc_f32")]
-pub const SAFE_FRAC_PI_2: Float = std::f32::consts::FRAC_PI_2 - 0.0001;
-#[cfg(not(feature = "calc_f32"))]
-pub const SAFE_FRAC_PI_2: Float = std::f64::consts::FRAC_PI_2 - 0.0001;
+pub const SAFE_FRAC_PI_2: Float = crate::consts::FRAC_PI_2 - 0.0001;
 
 pub type ModelStateRaw = [[Float; 4]; 4];
 
-#[cfg(feature = "calc_f32")]
-const MODEL_STATE_ATTRIBS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
-    7 => Float32x4,
-    8 => Float32x4,
-    9 => Float32x4,
-    10 => Float32x4
-];
-#[cfg(not(feature = "calc_f32"))]
+#[cfg(feature = "use_f64")]
 const MODEL_STATE_ATTRIBS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
     7 => Float64x4,
     8 => Float64x4,
     9 => Float64x4,
     10 => Float64x4
 ];
+#[cfg(not(feature = "use_f64"))]
+const MODEL_STATE_ATTRIBS: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![
+    7 => Float32x4,
+    8 => Float32x4,
+    9 => Float32x4,
+    10 => Float32x4
+];
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelState {
@@ -163,14 +160,14 @@ pub fn create_buffer(device: &wgpu::Device, instances: &[ModelState]) -> wgpu::B
     })
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum CameraType {
     Arcball,
     WASD,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ProjectionType {
     Orthographic,

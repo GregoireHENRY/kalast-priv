@@ -1,5 +1,5 @@
 figure.figsize: 6.0, 5.0
-figure.autolayout: True
+# figure.autolayout: True
 figure.labelsize: x-large
 
 # Helvetica

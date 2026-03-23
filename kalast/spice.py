@@ -51,7 +51,7 @@ def subobs(obs: Body | Spacecraft, bod: Body, et: float):
 
 def lolapha_planeto(sp: numpy.array, obs: Body | Spacecraft, bod: Body, et: float):
     # planetographic
-    (lo, la, h) = spice.recpgr(bod.name, sp, bod.radii[0], bod.flattening)
+    (lo, la, h) = spice.recpgr(bod.name, sp, bod.radii[0], bod.flattening_radius())
     _, _, pha, inc, emi = spice.ilumin(
         "ellipsoid", bod.name, et, bod.frame, "none", obs.name, sp
     )

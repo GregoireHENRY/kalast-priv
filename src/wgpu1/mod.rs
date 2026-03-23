@@ -1,5 +1,4 @@
 pub mod buffer;
-pub mod compute;
 pub mod config;
 pub mod hdr;
 pub mod light;
@@ -14,7 +13,7 @@ pub mod win;
 use crate::Float;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct FpsCounter {

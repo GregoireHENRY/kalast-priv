@@ -1,61 +1,67 @@
 [package]
 name = "kalast"
-description = "kalast"
 version = "0.1.0"
-authors = ["Grégoire Henry", "Grégoire Henry <gregoireh@pm.me>"]
-edition = "2024"
+description = "TPM for binary asteroids"
+authors = ["Grégoire Henry <gregoireh@pm.me>"]
+repository = "https://github.com/GregoireHENRY/kalast-priv"
 license = "MIT OR Apache-2.0"
-# repository = "https://github.com/GregoireHENRY/..."
+edition = "2024"
+# keywords = []
+# categories = []
 
 [lib]
 name = "kalast"
-crate-type = ["lib", "cdylib"] # rlib
+crate-type = ["lib", "cdylib"]
 
 [features]
-default = ["tobj/use_f64"]
-# default = ["calc_f32"]
-calc_f32 = []
+default = []
+use_f64 = ["tobj/use_f64"]
 
 [dependencies]
 kalast_macros = { path = "macros", version = "0.1" }
 
 # Generic
-zerocopy = "0.8.33"
-anyhow = "1.0"
-snafu = "0.8"
+zerocopy = "0.8.47"
+anyhow = "1.0.102"
+snafu = "0.9"
 serde = "1.0"
-env_logger = "0.11"
-confique = { version = "0.4", features = ["toml", "yaml", "json5"] }
+env_logger = "0.11.9"
+confique = { version = "0.2.0", features = ["toml", "yaml", "json5"] }
 lazy_static = "1.5"
-once_cell = "1.21"
+once_cell = "1.21.4"
 itertools = "0.14"
 paste = "1.0"
 
 # Albegra
-glam = { version = "0.30.10", features = ["serde", "bytemuck"] }
-ndarray = "0.17"
+glam = { version = "0.32.1", features = ["serde", "bytemuck"] }
+ndarray = "0.17.2"
 
 # Mesh
 # tobj = { version = "4.0", features = ["use_f64"] }
 tobj = { version = "4.0" }
 
 # Python
-pyo3 = { version = "0.27", features = [
+pyo3 = { version = "0.28", features = [
     "experimental-inspect",
     "abi3-py314",
     "multiple-pymethods"
 ] }
-numpy = { version = "0.27" }
+numpy = { version = "0.28" }
 
 # Window/GPU
-bytemuck = { version = "1.24", features = ["derive"] }
+bytemuck = { version = "1.25", features = ["derive"] }
 memoffset = "0.9"
-winit = { version = "0.30", features = ["android-native-activity"] }
-wgpu = { version = "26.0", features = ["serde"] }
-wgpu_text = "26.0"
+winit = { version = "0.30.13", features = ["android-native-activity"] }
+wgpu = { version = "29.0", features = ["serde"] }
+wgpu_text = "29.0"
 pollster = "0.4"
-image = { version = "0.25.9", default-features = false, features = [
+image = { version = "0.25.10", default-features = false, features = [
     "png",
     "jpeg",
     "hdr",
 ] }
+
+
+[dev-dependencies]
+rstest = "0.26.1"
+serial_test = "3.4.0"

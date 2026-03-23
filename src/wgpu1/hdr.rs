@@ -13,7 +13,7 @@ pub struct HdrPipeline {
 impl HdrPipeline {
     pub fn new(
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
+        size: &winit::dpi::PhysicalSize<u32>,
         enable_back_face: bool,
         wireframe: bool,
     ) -> Self {
@@ -21,8 +21,8 @@ impl HdrPipeline {
 
         let texture = super::texture::Texture::create_2d_texture(
             device,
-            config.width,
-            config.height,
+            size.width,
+            size.height,
             format,
             wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
             wgpu::FilterMode::Nearest,
@@ -68,13 +68,13 @@ impl HdrPipeline {
         let shader = wgpu::include_wgsl!("../../shaders/hdr.wgsl");
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
         });
         let pipeline = super::render::create_render_pipeline(
             device,
             &pipeline_layout,
-            config.format.add_srgb_suffix(),
+            format.add_srgb_suffix(),
             None,
             &[],
             shader,
@@ -143,7 +143,7 @@ impl HdrPipeline {
 
 pub struct HdrLoader {
     pub texture_format: wgpu::TextureFormat,
-    pub equirect_layout: wgpu::BindGroupLayout,
+    pub layout: wgpu::BindGroupLayout,
     pub equirect_to_cubemap: wgpu::ComputePipeline,
 }
 
@@ -152,7 +152,7 @@ impl HdrLoader {
         let module =
             device.create_shader_module(wgpu::include_wgsl!("../../shaders/equirectangular.wgsl"));
         let texture_format = wgpu::TextureFormat::Rgba32Float;
-        let equirect_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: None,
             entries: &[
                 wgpu::BindGroupLayoutEntry {
@@ -180,8 +180,8 @@ impl HdrLoader {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&equirect_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
         });
 
         let equirect_to_cubemap =
@@ -197,7 +197,7 @@ impl HdrLoader {
         Self {
             equirect_to_cubemap,
             texture_format,
-            equirect_layout,
+            layout,
         }
     }
 
@@ -277,7 +277,7 @@ impl HdrLoader {
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &self.equirect_layout,
+            layout: &self.layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,

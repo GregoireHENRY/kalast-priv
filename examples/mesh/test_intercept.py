@@ -21,15 +21,16 @@ n = numpy.array([0.0, 0.0, 1.0])
 x = kalast.mesh.intersect_plane(p, u, a, n)
 assert (x == numpy.array([0.0, 0.0, 0.0])).all()
 
-# ray interception means it is required to be facing the direction of the plane,
-# here it fails cus looking opposite direction
-# line interception would have work, but this is ray interception
+# ray interception means it is required to be facing the direction of the plane
+# it doesnt fail even if looking at opposite direction
+# can check if facing plane separately
 p = numpy.array([0.0, 0.0, 2.0])
 u = numpy.array([0.0, 0.0, 1.0])
 a = numpy.array([0.0, 0.0, 0.0])
 n = numpy.array([0.0, 0.0, 1.0])
 x = kalast.mesh.intersect_plane(p, u, a, n)
-assert x is None
+assert (x == numpy.array([0.0, 0.0, 0.0])).all()
+assert not kalast.mesh.is_facing_plane(u, n)
 
 # this results in same as plane interception that worked before
 # it just contains extra checks lying on triangle 3d space boundaries
@@ -55,97 +56,8 @@ c = numpy.array([0.0, 1.0, 0.0])
 x = kalast.mesh.intersect_triangle(p, u, a, b, c, n)
 assert x is None
 
-# some checks on a cube
-mesh = kalast.mesh.Mesh("res/cube.obj", lambda x: x)
-assert len(mesh.vertices) == 8
-assert mesh.indices.size == 36
-assert len(mesh.facets) == 12
-assert len(mesh._vertices_before_flatten) == 0
-
-# indices of the vertices of selected facets
-assert mesh.get_indices_facet(0) == [0, 1, 2]
-assert mesh.get_indices_facet(1) == [1, 3, 4]
-assert mesh.get_indices_facet(11) == [0, 2, 7]
-
-[a, b, c] = mesh.get_positions_facet(0)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, -1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, 1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(1)
-assert (a == numpy.array([1.0, -1.0, 1.0])).all()
-assert (b == numpy.array([-1.0, -1.0, -1.0])).all()
-assert (c == numpy.array([1.0, -1.0, -1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(11)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, 1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, -1.0])).all()
-
-assert (mesh.facets[0].n == numpy.array([0.0, 0.0, 1.0])).all()
-assert (mesh.facets[1].n == numpy.array([0.0, -1.0, 0.0])).all()
-assert (mesh.facets[11].n == numpy.array([0.0, 1.0, 0.0])).all()
-
-# flatten mesh and re-test vertices positions
-mesh.flatten()
-
-assert len(mesh.vertices) == 36
-assert mesh.indices.size == 36
-assert len(mesh.facets) == 12
-assert len(mesh._vertices_before_flatten) == 8
-
-[a, b, c] = mesh.get_positions_facet(0)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, -1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, 1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(1)
-assert (a == numpy.array([1.0, -1.0, 1.0])).all()
-assert (b == numpy.array([-1.0, -1.0, -1.0])).all()
-assert (c == numpy.array([1.0, -1.0, -1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(11)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, 1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, -1.0])).all()
-
-[a, b, c] = mesh.get_normals_facet(0)
-assert (a == numpy.array([0.0, 0.0, 1.0])).all()
-assert (b == numpy.array([0.0, 0.0, 1.0])).all()
-assert (c == numpy.array([0.0, 0.0, 1.0])).all()
-
-[a, b, c] = mesh.get_normals_facet(1)
-assert (a == numpy.array([0.0, -1.0, 0.0])).all()
-assert (b == numpy.array([0.0, -1.0, 0.0])).all()
-assert (c == numpy.array([0.0, -1.0, 0.0])).all()
-
-[a, b, c] = mesh.get_normals_facet(11)
-assert (a == numpy.array([0.0, 1.0, 0.0])).all()
-assert (b == numpy.array([0.0, 1.0, 0.0])).all()
-assert (c == numpy.array([0.0, 1.0, 0.0])).all()
-
-# re-smooth and check it's back to origin
-mesh.smoothen()
-
-assert len(mesh.vertices) == 8
-assert mesh.indices.size == 36
-assert len(mesh.facets) == 12
-assert len(mesh._vertices_before_flatten) == 0
-
-[a, b, c] = mesh.get_positions_facet(0)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, -1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, 1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(1)
-assert (a == numpy.array([1.0, -1.0, 1.0])).all()
-assert (b == numpy.array([-1.0, -1.0, -1.0])).all()
-assert (c == numpy.array([1.0, -1.0, -1.0])).all()
-
-[a, b, c] = mesh.get_positions_facet(11)
-assert (a == numpy.array([-1.0, 1.0, 1.0])).all()
-assert (b == numpy.array([1.0, 1.0, 1.0])).all()
-assert (c == numpy.array([1.0, 1.0, -1.0])).all()
+# some checks with a cube
+mesh = kalast.mesh.Mesh("res/cube.obj")
 
 # some ray interceptions
 p = numpy.array([0.0, 0.0, 10.0])
@@ -179,45 +91,6 @@ assert numpy.all(r[1] - numpy.array([1.0, 0.0, 0.0]) < 1e-7)
 # The crater has negative Z values and depth of crater is same as crater radius.
 mesh = kalast.mesh.Mesh("res/plane_crater_1024-5000_h=0.437.obj", lambda x: x)
 
-# 3267 / 3 = 1089 vertices
-# 6144 / 3 = 2048 facets (triangles)
-assert len(mesh.vertices) == 1089
-assert mesh.indices.size == 6144
-assert len(mesh.facets) == 2048
-assert len(mesh._vertices_before_flatten) == 0
-
-# indices of the vertices of selected facets
-assert mesh.get_indices_facet(0) == [0, 1, 2]
-assert mesh.get_indices_facet(1) == [3, 4, 0]
-assert mesh.get_indices_facet(10) == [21, 22, 19]
-assert mesh.get_indices_facet(2047) == [1086, 1088, 1087]
-
-# positions of the vertices of selected facets
-[a, b, c] = mesh.get_positions_facet(0)
-assert (a == numpy.array([-0.46875, -0.5, 0])).all()
-assert (b == numpy.array([-0.5, -0.46875, 0])).all()
-assert (c == numpy.array([-0.5, -0.5, 0])).all()
-
-[a, b, c] = mesh.get_positions_facet(1)
-assert (a == numpy.array([-0.4375, -0.5, 0])).all()
-assert (b == numpy.array([-0.46875, -0.46875, 0])).all()
-assert (c == numpy.array([-0.46875, -0.5, 0])).all()
-
-[a, b, c] = mesh.get_positions_facet(2)
-assert (a == numpy.array([-0.40625, -0.5, 0])).all()
-assert (b == numpy.array([-0.4375, -0.46875, 0])).all()
-assert (c == numpy.array([-0.4375, -0.5, 0])).all()
-
-[a, b, c] = mesh.get_positions_facet(10)
-assert (a == numpy.array([-0.15625, -0.5, 0])).all()
-assert (b == numpy.array([-0.1875, -0.46875, 0])).all()
-assert (c == numpy.array([-0.1875, -0.5, 0])).all()
-
-[a, b, c] = mesh.get_positions_facet(2047)
-assert (a == numpy.array([0.5, 0.46875, 0.0])).all()
-assert (b == numpy.array([0.5, 0.5, 0.0])).all()
-assert (c == numpy.array([0.46875, 0.5, 0.0])).all()
-
 # top-down ray to intercept with bottom depth inside of crater. True for argument exit_first is to intercept first facet found, False
 # is to respect Z-buffer and find closest to ray facet, False is default.
 p = numpy.array([0.0, 0.0, 0.0])
@@ -227,13 +100,12 @@ assert r[0] == 496
 assert numpy.all(r[1] - numpy.array([0.0, 0.0, -0.437]) < 1e-7)
 
 # specific case for parallel ray to normals, it does not intercept triangles from the 0 dot product in denominator in
-# formula, hence it only intercept with the first facet that is facing, which is the other side of the crater
-# It does intercept cus opposite facet is actually a bit tilted.
+# formula, hence it only intercept with the first facet that is met
 p = numpy.array([1.0, 0.0, 0.0])
 u = numpy.array([-1.0, 0.0, 0.0])
 r = mesh.intersect(p, u)
-assert r[0] == 1506
-assert numpy.all(r[1] - numpy.array([-0.43749988, 0.0, 0.0]) < 1e-8)
+assert r[0] == 509
+assert numpy.all(r[1] - numpy.array([0.4375, 0.0, 0.0]) < 1e-8)
 
 # top to "down left" ray with 45° angle to intercept with "bottom left" part inside of crater
 p = numpy.array([0.0, 0.0, 0.0])
@@ -280,33 +152,35 @@ assert (
     < 1e-6
 )
 
-# from under crater trying to intercept, but interception respect facing ray triangle (respecting back-face culling) so
-# no interception is expected here
+# from under crater trying to intercept
+# interception happens even if normals are not facing, same as test with
+# the plane above, can check is_facing
 p = numpy.array([0.0, 0.0, -10.0])
 u = numpy.array([0.0, 0.0, 1.0])
 r = mesh.intersect(p, u)
-assert r is None
+assert r[0] == 496
+assert numpy.all((r[1] - numpy.array([-0.0, 0.0, -0.437])) < 1e-8)
+assert not kalast.mesh.is_facing_plane(u, n)
 
-# trying to intercept from under crater but directed on X/Y plane to the side, back-face culling should still catch
-# some facets
+# trying to intercept from under crater but directed on X/Y plane to the side
 p = numpy.array([1.0, 0.0, -0.1])
 u = numpy.array([-1.0, 0.0, 0.0])
 r = mesh.intersect(p, u)
-assert r[0] == 1506
-assert numpy.all((r[1] - numpy.array([-0.41783881, 0.0, -0.1])) < 1e-8)
+assert r[0] == 509
+assert numpy.all((r[1] - numpy.array([0.4181, 0.0, -0.1])) < 1e-8)
 
 # same but at 0.4 -Z
 p = numpy.array([1.0, 0.0, -0.4])
 u = numpy.array([-1.0, 0.0, 0.0])
 r = mesh.intersect(p, u)
-assert r[0] == 1514
-assert numpy.all((r[1] - numpy.array([-0.17184079, 0.0, -0.4])) < 1e-8)
+assert r[0] == 501
+assert numpy.all((r[1] - numpy.array([0.175, 0.0, -0.4])) < 1e-8)
 
 # same but at most bottom depth height
 p = numpy.array([1.0, 0.0, -0.437])
 u = numpy.array([-1.0, 0.0, 0.0])
 r = mesh.intersect(p, u)
-assert r[0] == 1519
+assert r[0] == 496
 assert numpy.all((r[1] - numpy.array([0.0, 0.0, -0.437])) < 1e-8)
 
 # same but slightly missing

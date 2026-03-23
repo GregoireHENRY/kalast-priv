@@ -65,7 +65,7 @@ pub enum FacetSelection {
     All,
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct Record {
     #[pyo3(get, set)]
@@ -132,7 +132,7 @@ impl std::fmt::Debug for Record {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[pyo3(get_all, set_all)]
 #[derive(Clone)]
 pub struct SkinDepthParams {
@@ -194,7 +194,7 @@ impl DepthOption {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 pub struct SetupColumn {
     pub depth_max: DepthOption,

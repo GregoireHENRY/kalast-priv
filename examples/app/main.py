@@ -1,88 +1,99 @@
-import numpy  # noqa
-import glm
+#!/usr/bin/env python
+
+import numpy
 
 import kalast
 
 
-def closure_update_state(
-    state: kalast.gpu.win.StateStep,
-) -> kalast.gpu.win.StateStep | None:
-    if state.iteration == 0:
-        rot = glm.mat3(
-            glm.rotate(
-                -90.0 * kalast.util.RPD,
-                [1.0, 0.0, 0.0],
-            )
-        )
-    else:
-        rot = glm.mat3(
-            glm.rotate(
-                -100.0 * kalast.util.RPD * state.dt.total_seconds(), [0.0, 1.0, 0.0]
-            )
-        )
+app = kalast.app.App()
 
-    # state.light_pos = state.light_pos @ rot
+# app.config.debug_app = True
+# app.config.debug_window = True
+# app.config.debug_simulation = True
 
-    for iib in range(0, len(state.models_state)):
-        model = state.get_model_state(iib)
-        # model.p[0] = 1.0
+app.config.width = 800
+app.config.height = 600
 
-        model.m = model.m @ rot
+app.config.background = [0.0, 0.0, 0.0, 0.0]
 
-        state.set_model_state(iib, model)
+# Set camera pos/up
+# Different methods to set dir
+app.simulation.camera.pos = [0.0, 1.0, 2.0]
+app.simulation.camera.up = [0.0, 1.0, 0.0]
 
-    return state
+# method 1: compute dir yourself
+dir_ = numpy.array([0.0, -1.0, -2.0])
+app.simulation.camera.dir = dir_ / numpy.linalg.norm(dir_)
 
+if False:
+    # method 2: set anchor and look at it
+    # anchor is origin by default, so not needed to write it, but to show you:
+    app.simulation.camera.anchor = [0.0, 0.0, 0.0]
+    app.simulation.camera.look_anchor()
 
-config = kalast.gpu.config.Config()
-config.debug_state_creation = False
-config.debug_state_rendering = False
-config.width = 1440
-config.height = 1080
-config.depthpass_enable = False
-config.render_light = True
-config.hdr_enable = False
-config.background = [0.0, 0.0, 0.0, 1.0]
-config.texts = [
-    # kalast.gpu.config.ConfigText("Hello custom text", pos=[1440.0, 0.0], ha="right"),
-]
-config.show_text_info = True
-config.fps_time_refresh = 0.05
+if False:
+    # method 3: same as method 2 but one less line code if anchor is not origin
+    app.simulation.camera.set_target([0.0, 0.0, 0.0])
 
-config.camera_pos = [0.0, 5.0, 10.0]
-config.camera_yaw = -90.0
-config.camera_pitch = -20.0
-config.light_pos = [0.0, 0.0, 4.0]
+# can't see object for some reason i don't understand
+# app.simulation.camera.projection.set_orthographic()
 
-# config.camera_pos = [0.0, -10.0, 0.0]
-# config.camera_yaw = 90.0
-# config.camera_pitch = 90.0
-# config.light_pos = [0.0, -4.0, 0.0]
+# Camera projection is perspective by default with ~20°
+# app.simulation.camera.projection.set_perspective()
+app.simulation.camera.projection.fovy = 45.0 * kalast.util.RPD
 
-config.camera_fovy = 45.0
-config.camera_znear = 0.1
-config.camera_zfar = 100.0
-config.camera_speed = 4.0
-config.camera_sensitivity = 0.4
-config.light_color = [1.0, 1.0, 1.0]
-
-config.start_paused = True
-config.global_test = 0
-config.ambient_strength = 0.01
-config.diffuse_enable = True
-config.specular_enable = False
-
-config.models = [
-    kalast.gpu.config.ConfigModel(
-        # path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003_decimate_1k.obj",
-        path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003_decimated_3072.obj",
-        # path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003.obj",
-        # path="/Users/gregoireh/data/mesh/didymos/didymos_g_1165mm_spc_obj_0000n00000_v003.obj",
-        flat=True,
-        # pos_factor=[1.0, 1.0, 1.0],
-        # color_mode=1,
-        # color=[1.0, 1.0, 1.0]
+# Pentagon with 3 triangles
+vertices = [
+    kalast.mesh.Vertex(
+        pos=[-0.0868241, 0.49240386, 0.0],
+        tex=[0.4131759, 0.00759614],
+        color=[0.5, 0.0, 0.5],
+    ),
+    kalast.mesh.Vertex(
+        pos=[-0.49513406, 0.06958647, 0.0],
+        tex=[0.0048659444, 0.43041354],
+        color=[0.5, 0.0, 0.5],
+    ),
+    kalast.mesh.Vertex(
+        pos=[-0.21918549, -0.44939706, 0.0],
+        tex=[0.28081453, 0.949397],
+        color=[0.5, 0.0, 0.5],
+    ),
+    kalast.mesh.Vertex(
+        pos=[0.35966998, -0.3473291, 0.0],
+        tex=[0.85967, 0.84732914],
+        color=[0.5, 0.0, 0.5],
+    ),
+    kalast.mesh.Vertex(
+        pos=[0.44147372, 0.2347359, 0.0],
+        tex=[0.9414737, 0.2652641],
+        color=[0.5, 0.0, 0.5],
     ),
 ]
+indices = [0, 1, 4, 1, 2, 4, 2, 3, 4]
+penta = kalast.mesh.Mesh(vertices=vertices, indices=indices)
 
-kalast.gpu.win.run(config, closure_update_state)
+mat = numpy.eye(4, dtype=numpy.float32)
+# mat[0:3, -1] = [0.0, 0.0, 0.0]
+# mat[0:3, 0:3] = 2d rot
+app.simulation.add_body(penta, mat=mat)
+
+
+def tick(sim):
+    # print(f"#{sim.state.iteration}")
+
+    if False:
+        # Update FOV at a specific iteration
+        if sim.state.iteration == 100:
+            sim.camera.projection.fovy = 20.0 * kalast.util.RPD
+            print("#100")
+
+    if False:
+        # Update FOV at every iterations until loop at 180°
+        sim.camera.projection.fovy = (sim.state.iteration * kalast.util.RPD) % (
+            kalast.util.PI
+        )
+
+
+app.tick = tick
+app.start()

@@ -1,3 +1,4 @@
+pub mod app;
 pub mod entity;
 pub mod mesh;
 pub mod routines;
@@ -51,8 +52,10 @@ where
 #[pyo3(name = "_rs")]
 fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     let util = PyModule::new(m.py(), "util")?;
+    pyadd_c!(util, crate::util::EPSILON);
     pyadd_c!(util, crate::util::HOUR);
     pyadd_c!(util, crate::util::DAY);
+    pyadd_c!(util, crate::util::PI);
     pyadd_c!(util, crate::util::DPR);
     pyadd_c!(util, crate::util::RPD);
     pyadd_c!(util, crate::util::AU);
@@ -239,58 +242,59 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .getattr("modules")?
         .set_item("kalast._rs.tpm.routine", routine)?;
 
-    let gpu = PyModule::new(m.py(), "gpu")?;
-    m.add_submodule(&gpu)?;
+    let app = PyModule::new(m.py(), "app")?;
+    m.add_submodule(&app)?;
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kalast._rs.gpu", &gpu)?;
+        .set_item("kalast._rs.app", &app)?;
 
-    /*
-    let win = PyModule::new(gpu.py(), "win")?;
-    // pyadd_f!(win, crate::gpu::win::py_run);
-    // pyadd_f!(win, crate::gpu::win::py_create);
-    // win.add_class::<crate::gpu::win::PyApp>()?;
-    // win.add_class::<crate::gpu::win::State>()?;
-    win.add_class::<crate::gpu::win::StateStep>()?;
-    gpu.add_submodule(&win)?;
+    let core = PyModule::new(app.py(), "_core")?;
+    core.add_class::<app::App>()?;
+    app.add_submodule(&core)?;
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kalast._rs.gpu.win", win)?;
+        .set_item("kalast._rs.app._core", &core)?;
 
-    let scene = PyModule::new(gpu.py(), "scene")?;
-    scene.add_class::<crate::gpu::scene::ModelState>()?;
-    gpu.add_submodule(&scene)?;
+    let simulation = PyModule::new(app.py(), "simulation")?;
+    simulation.add_class::<app::simulation::Simulation>()?;
+    simulation.add_class::<app::simulation::State>()?;
+    app.add_submodule(&simulation)?;
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kalast._rs.gpu.scene", scene)?;
+        .set_item("kalast._rs.app.simulation", &simulation)?;
 
-    let config = PyModule::new(gpu.py(), "config")?;
-    config.add_class::<crate::gpu::config::Config>()?;
-    config.add_class::<crate::gpu::config::ConfigModel>()?;
-    config.add_class::<crate::gpu::config::ConfigText>()?;
-    gpu.add_submodule(&config)?;
+    let camera = PyModule::new(app.py(), "camera")?;
+    camera.add_class::<app::camera::Camera>()?;
+    camera.add_class::<app::camera::Projection>()?;
+    app.add_submodule(&simulation)?;
     py.import("sys")?
         .getattr("modules")?
-        .set_item("kalast._rs.gpu.config", config)?;
-    */
+        .set_item("kalast._rs.app.camera", &camera)?;
+    
+    let config = PyModule::new(app.py(), "config")?;
+    config.add_class::<app::config::Config>()?;
+    app.add_submodule(&config)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.app.config", &config)?;
 
-    let routines = PyModule::new(m.py(), "routines")?;
-    m.add_submodule(&routines)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("kalast._rs.routines", &routines)?;
+    // let routines = PyModule::new(m.py(), "routines")?;
+    // m.add_submodule(&routines)?;
+    // py.import("sys")?
+    //     .getattr("modules")?
+    //     .set_item("kalast._rs.routines", &routines)?;
 
-    let setup = PyModule::new(routines.py(), "setup")?;
-    setup.add_class::<routines::setup::ProgressDebug>()?;
-    setup.add_class::<routines::setup::Time>()?;
-    setup.add_class::<crate::routines::setup::SkinDepthParams>()?;
-    setup.add_class::<routines::setup::BodyDataMap>()?;
-    setup.add_class::<routines::setup::Body>()?;
-    setup.add_class::<routines::setup::Setup>()?;
-    routines.add_submodule(&routines)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("kalast._rs.routines.setup", setup)?;
+    // let setup = PyModule::new(routines.py(), "setup")?;
+    // setup.add_class::<routines::setup::ProgressDebug>()?;
+    // setup.add_class::<routines::setup::Time>()?;
+    // setup.add_class::<crate::routines::setup::SkinDepthParams>()?;
+    // setup.add_class::<routines::setup::BodyDataMap>()?;
+    // setup.add_class::<routines::setup::Body>()?;
+    // setup.add_class::<routines::setup::Setup>()?;
+    // routines.add_submodule(&routines)?;
+    // py.import("sys")?
+    //     .getattr("modules")?
+    //     .set_item("kalast._rs.routines.setup", setup)?;
 
     Ok(())
 }

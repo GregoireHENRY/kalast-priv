@@ -1,11 +1,10 @@
 from kalast import (  # noqa
     # Rust modules bindings
+    app,
     astro,
     entity,
-    gpu,
     math,
     mesh,
-    routines,
     spice,
     tpm,
     util,
@@ -14,3 +13,5 @@ from kalast import (  # noqa
     plot,
     # typing,
 )
+
+del _rs  # noqa

@@ -55,7 +55,7 @@ pub struct Vertex {
     pub bitangent: Vec3,
     pub color: Vec3,
     pub color_mode: u32,
-    pub _padding: u32,
+    pub extra: u32,
 }
 
 impl Vertex {
@@ -69,7 +69,7 @@ impl Vertex {
             bitangent: Vec3::new(0.0, 0.0, 0.0),
             color: Vec3::new(0.0, 0.0, 0.0),
             color_mode: 0,
-            _padding: 0,
+            extra: 0,
         }
     }
 }

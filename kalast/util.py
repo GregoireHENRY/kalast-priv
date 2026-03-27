@@ -27,8 +27,10 @@
 import numpy
 
 from kalast._rs.util import (  # noqa
+    EPSILON,
     HOUR,
     DAY,
+    PI,
     DPR,
     RPD,
     AU,

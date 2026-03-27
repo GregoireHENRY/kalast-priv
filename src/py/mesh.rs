@@ -275,7 +275,8 @@ impl std::fmt::Debug for Material {
     }
 }
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
+#[derive(Clone)]
 pub struct Mesh {
     pub inner: Rc<RefCell<crate::mesh::Mesh>>,
 }

@@ -17,8 +17,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_debug_app(&mut self, debug_app: bool) {
-        self.app.borrow_mut().config.debug_app = debug_app;
+    fn set_debug_app(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_app = v;
     }
 
     #[getter]
@@ -27,8 +27,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_debug_window(&mut self, debug_window: bool) {
-        self.app.borrow_mut().config.debug_window = debug_window;
+    fn set_debug_window(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_window = v;
     }
 
     #[getter]
@@ -37,8 +37,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_debug_window_mesh(&mut self, debug_window_mesh: bool) {
-        self.app.borrow_mut().config.debug_window_mesh = debug_window_mesh;
+    fn set_debug_window_mesh(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_window_mesh = v;
     }
 
     #[getter]
@@ -47,8 +47,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_debug_simulation(&mut self, debug_simulation: bool) {
-        self.app.borrow_mut().config.debug_simulation = debug_simulation;
+    fn set_debug_simulation(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_simulation = v;
     }
 
     #[getter]
@@ -57,8 +57,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_title(&mut self, title: &str) {
-        self.app.borrow_mut().config.title = title.to_string();
+    fn set_title(&mut self, v: &str) {
+        self.app.borrow_mut().config.title = v.to_string();
     }
 
     #[getter]
@@ -67,8 +67,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_width(&mut self, width: u32) {
-        self.app.borrow_mut().config.width = width;
+    fn set_width(&mut self, v: u32) {
+        self.app.borrow_mut().config.width = v;
     }
 
     #[getter]
@@ -77,8 +77,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_height(&mut self, height: u32) {
-        self.app.borrow_mut().config.height = height;
+    fn set_height(&mut self, v: u32) {
+        self.app.borrow_mut().config.height = v;
     }
 
     #[getter]
@@ -88,12 +88,12 @@ impl Config {
     }
 
     #[setter]
-    pub fn set_background(&mut self, color: [Float; 4]) {
-        let v = &mut self.app.borrow_mut().config.background;
-        v.r = color[0] as f64;
-        v.g = color[1] as f64;
-        v.b = color[2] as f64;
-        v.a = color[3] as f64;
+    pub fn set_background(&mut self, v: [Float; 4]) {
+        let c = &mut self.app.borrow_mut().config.background;
+        c.r = v[0] as f64;
+        c.g = v[1] as f64;
+        c.b = v[2] as f64;
+        c.a = v[3] as f64;
     }
 
     #[getter]
@@ -102,8 +102,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_enable_back_face(&mut self, enable_back_face: bool) {
-        self.app.borrow_mut().config.enable_back_face = enable_back_face;
+    fn set_enable_back_face(&mut self, v: bool) {
+        self.app.borrow_mut().config.enable_back_face = v;
     }
 
     #[getter]
@@ -112,8 +112,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_sensitivity_move(&mut self, sensitivity: Float) {
-        self.app.borrow_mut().config.sensitivity_move = sensitivity;
+    fn set_sensitivity_move(&mut self, v: Float) {
+        self.app.borrow_mut().config.sensitivity_move = v;
     }
 
     #[getter]
@@ -122,8 +122,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_sensitivity_look(&mut self, sensitivity: Float) {
-        self.app.borrow_mut().config.sensitivity_look = sensitivity;
+    fn set_sensitivity_look(&mut self, v: Float) {
+        self.app.borrow_mut().config.sensitivity_look = v;
     }
 
     #[getter]
@@ -132,8 +132,8 @@ impl Config {
     }
 
     #[setter]
-    fn set_sensitivity_rotate(&mut self, sensitivity: Float) {
-        self.app.borrow_mut().config.sensitivity_rotate = sensitivity;
+    fn set_sensitivity_rotate(&mut self, v: Float) {
+        self.app.borrow_mut().config.sensitivity_rotate = v;
     }
 
     #[getter]
@@ -142,8 +142,28 @@ impl Config {
     }
 
     #[setter]
-    fn set_sensitivity_zoom(&mut self, sensitivity: Float) {
-        self.app.borrow_mut().config.sensitivity_zoom = sensitivity;
+    fn set_sensitivity_zoom(&mut self, v: Float) {
+        self.app.borrow_mut().config.sensitivity_zoom = v;
+    }
+
+    #[getter]
+    fn shader_color_mode(&self) -> u32 {
+        self.app.borrow().config.shader_color_mode
+    }
+
+    #[setter]
+    fn set_shader_color_mode(&mut self, v: u32) {
+        self.app.borrow_mut().config.shader_color_mode = v;
+    }
+
+    #[getter]
+    fn shader_extra(&self) -> u32 {
+        self.app.borrow().config.shader_extra
+    }
+
+    #[setter]
+    fn set_shader_extra(&mut self, v: u32) {
+        self.app.borrow_mut().config.shader_extra = v;
     }
 
     fn __repr__(&self) -> String {

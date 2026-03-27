@@ -1,7 +1,14 @@
+struct Globals {
+    color_mode: u32,
+    extra: u32,
+};
+@group(1) @binding(0)
+var<uniform> globals: Globals;
+
 struct CameraUniform {
     view_proj: mat4x4<f32>,
 };
-@group(1) @binding(0)
+@group(2) @binding(0)
 var<uniform> camera: CameraUniform;
 
 struct ModelMatrix {
@@ -54,6 +61,13 @@ var s_diffuse: sampler;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // return vec4<f32>(in.color, 1.0);
-    return textureSample(t_diffuse, s_diffuse, in.tex);
+    if globals.color_mode == 0 {
+        return vec4<f32>(in.color, 1.0);
+    }
+    else if globals.color_mode == 1 {
+        return textureSample(t_diffuse, s_diffuse, in.tex);
+    }
+    else {
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    }
 }

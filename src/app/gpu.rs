@@ -125,29 +125,25 @@ impl RenderPipeline {
     }
 }
 
-pub struct UniformBuffer {
+pub struct UniformBuffer<U: bytemuck::NoUninit> {
+    pub uniform: U,
     pub inner: wgpu::Buffer,
     pub layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
 }
 
-impl UniformBuffer {
-    pub fn new<A: bytemuck::NoUninit>(
-        device: &wgpu::Device,
-        uniform: &[A],
-        usage: wgpu::BufferUsages,
-        visibility: wgpu::ShaderStages,
-    ) -> Self {
+impl<U: bytemuck::NoUninit> UniformBuffer<U> {
+    pub fn new(device: &wgpu::Device, uniform: U) -> Self {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            contents: bytemuck::cast_slice(uniform),
-            usage,
+            contents: bytemuck::cast_slice(&[uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             label: None,
         });
 
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -167,6 +163,7 @@ impl UniformBuffer {
             label: None,
         });
         Self {
+            uniform,
             inner: buffer,
             layout,
             bind_group,

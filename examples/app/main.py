@@ -16,6 +16,8 @@ app.config.height = 600
 
 app.config.background = [0.0, 0.0, 0.0, 0.0]
 
+app.config.shader_color_mode = 0
+
 # Set camera pos/up
 # Different methods to set dir
 app.simulation.camera.pos = [0.0, 1.0, 2.0]

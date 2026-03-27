@@ -2,6 +2,17 @@ use std::sync::Arc;
 
 use crate::Float;
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Globals {
+    // 0: flat
+    // 1: texture
+    // 2: diffuse lighting
+    pub color_mode: u32,
+
+    pub extra: u32,
+}
+
 pub struct Window {
     pub window: Arc<winit::window::Window>,
     pub instance: wgpu::Instance,
@@ -14,7 +25,8 @@ pub struct Window {
     pub pipelines: super::gpu::Pipelines,
     pub texture: super::gpu::Texture,
     pub meshes: Vec<super::gpu::MeshBuffer>,
-    pub camera: super::gpu::UniformBuffer,
+    pub camera: super::gpu::UniformBuffer<glam::Mat4>,
+    pub globals: super::gpu::UniformBuffer<Globals>,
 }
 
 impl Window {
@@ -125,14 +137,18 @@ impl Window {
             }
         }
 
+        let globals = Globals {
+            color_mode: config.shader_color_mode,
+            extra: config.shader_extra,
+        };
+        let globals = super::gpu::UniformBuffer::new(&device, globals);
+
         let camera_buffer = super::gpu::UniformBuffer::new(
             &device,
-            &[simulation
+            simulation
                 .camera
                 .view_proj(size.width as Float / size.height as Float)
-                .unwrap()],
-            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            wgpu::ShaderStages::VERTEX,
+                .unwrap(),
         );
 
         let pipeline = super::gpu::RenderPipeline::new(
@@ -140,7 +156,11 @@ impl Window {
             surface_config.format,
             config.enable_back_face,
             super::gpu::SHADER_MESH_MAT,
-            &[Some(&texture.layout), Some(&camera_buffer.layout)],
+            &[
+                Some(&texture.layout),
+                Some(&camera_buffer.layout),
+                Some(&globals.layout),
+            ],
         );
 
         let pipelines = super::gpu::Pipelines {
@@ -161,6 +181,7 @@ impl Window {
             texture,
             meshes,
             camera: camera_buffer,
+            globals,
         }
     }
 
@@ -282,7 +303,8 @@ impl Window {
 
             render_pass.set_pipeline(&self.pipelines.main.inner);
             render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera.bind_group, &[]);
+            render_pass.set_bind_group(1, &self.globals.bind_group, &[]);
+            render_pass.set_bind_group(2, &self.camera.bind_group, &[]);
 
             for mesh in &self.meshes {
                 mesh.render(&mut render_pass);

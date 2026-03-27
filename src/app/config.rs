@@ -18,6 +18,9 @@ pub struct Config {
     pub sensitivity_look: Float,
     pub sensitivity_rotate: Float,
     pub sensitivity_zoom: Float,
+
+    pub shader_color_mode: u32,
+    pub shader_extra: u32,
 }
 
 impl Default for Config {
@@ -34,11 +37,14 @@ impl Default for Config {
 
             background: wgpu::Color::BLACK,
             enable_back_face: false,
-            
+
             sensitivity_move: 1.0,
             sensitivity_look: 1.0,
             sensitivity_rotate: 1.0,
             sensitivity_zoom: 1.0,
+
+            shader_color_mode: 0,
+            shader_extra: 0,
         }
     }
 }

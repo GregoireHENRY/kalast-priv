@@ -6,6 +6,7 @@ pub struct Config {
     pub debug_window: bool,
     pub debug_window_mesh: bool,
     pub debug_simulation: bool,
+    pub debug_depth_show: bool,
 
     pub title: String,
     pub width: u32,
@@ -30,10 +31,11 @@ impl Default for Config {
             debug_window: false,
             debug_window_mesh: false,
             debug_simulation: false,
+            debug_depth_show: false,
 
             title: "kalast".to_string(),
-            width: 1024,
-            height: 768,
+            width: 800,
+            height: 600,
 
             background: wgpu::Color::BLACK,
             enable_back_face: false,

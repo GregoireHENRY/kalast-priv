@@ -27,6 +27,7 @@ pub struct Window {
     pub meshes: Vec<super::gpu::MeshBuffer>,
     pub camera: super::gpu::UniformBuffer<glam::Mat4>,
     pub globals: super::gpu::UniformBuffer<Globals>,
+    pub depth: super::depth::DepthPass,
 }
 
 impl Window {
@@ -68,6 +69,10 @@ impl Window {
         // features_webgpu.insert(wgpu::FeaturesWebGPU::DEPTH32FLOAT_STENCIL8);
 
         // Features::NON_FILL_POLYGON_MODE
+        // Features::POLYGON_MODE_LINE
+        // Features::POLYGON_MODE_POINT
+        // Features::DEPTH_CLIP_CONTROL
+        // Requires Features::CONSERVATIVE_RASTERIZATION
 
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
@@ -112,8 +117,11 @@ impl Window {
             );
         }
 
-        let texture =
-            super::gpu::Texture::new(&device, &queue, include_bytes!("../../res/happy-tree.png"));
+        let texture = super::gpu::Texture::new_image_from_bytes(
+            &device,
+            &queue,
+            include_bytes!("../../res/happy-tree.png"),
+        );
 
         let mut meshes = vec![];
         for body in simulation.bodies.iter().map(|b| b.borrow()) {
@@ -157,16 +165,25 @@ impl Window {
             config.enable_back_face,
             super::gpu::SHADER_MESH_MAT,
             &[
-                Some(&texture.layout),
+                Some(&texture.bind.as_ref().unwrap().layout),
                 Some(&camera_buffer.layout),
                 Some(&globals.layout),
             ],
+            true,
         );
 
         let pipelines = super::gpu::Pipelines {
             main: pipeline,
             more: vec![],
         };
+
+        // let depth = super::gpu::Texture::create_depth_texture_with_comparison_sampler(
+        //     &device,
+        //     size.width,
+        //     size.height,
+        // );
+
+        let depth = super::depth::DepthPass::new(&device, &surface_config);
 
         Self {
             window,
@@ -182,6 +199,7 @@ impl Window {
             meshes,
             camera: camera_buffer,
             globals,
+            depth,
         }
     }
 
@@ -210,19 +228,21 @@ impl Window {
             .unwrap();
     }
 
-    pub fn resize(
-        &mut self,
-        size: winit::dpi::PhysicalSize<u32>,
-        config: &crate::app::config::Config,
-    ) {
-        self.surface_config.width = size.width;
-        self.surface_config.height = size.height;
-
+    pub fn resize(&mut self, width: u32, height: u32, config: &crate::app::config::Config) {
+        self.surface_config.width = width;
+        self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
+
+        // self.depth = super::gpu::Texture::create_depth_texture_with_comparison_sampler(
+        //     &self.device,
+        //     size.width,
+        //     size.height,
+        // );
+
+        self.depth.resize(&self.device, width, height);
 
         let is_surface_configured = self.is_surface_configured;
         self.is_surface_configured = true;
-
         if !is_surface_configured && self.is_surface_configured {
             if config.debug_window {
                 println!("[WINDOW] surface is now configured")
@@ -298,17 +318,29 @@ impl Window {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth.texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 ..Default::default()
             });
 
             render_pass.set_pipeline(&self.pipelines.main.inner);
-            render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
+            render_pass.set_bind_group(0, &self.texture.bind.as_ref().unwrap().bind_group, &[]);
             render_pass.set_bind_group(1, &self.globals.bind_group, &[]);
             render_pass.set_bind_group(2, &self.camera.bind_group, &[]);
 
             for mesh in &self.meshes {
                 mesh.render(&mut render_pass);
             }
+        }
+
+        if config.debug_depth_show {
+            self.depth.render(&view, &mut encoder);
         }
 
         self.queue.submit([encoder.finish()]);

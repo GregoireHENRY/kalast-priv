@@ -1,5 +1,5 @@
 struct VertexInput {
-    @location(0) position: vec3<f32>,
+    @location(0) pos: vec3<f32>,
     @location(1) tex: vec2<f32>,
 };
 
@@ -10,11 +10,11 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-    model: VertexInput
+    vertex: VertexInput
 ) -> VertexOutput {
     var out: VertexOutput;
-    out.tex = model.tex;
-    out.clip_position = vec4<f32>(model.position, 1.0);
+    out.tex = vertex.tex;
+    out.clip_position = vec4<f32>(vertex.pos, 1.0);
     return out;
 }
 

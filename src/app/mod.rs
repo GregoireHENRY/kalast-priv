@@ -1,6 +1,7 @@
 pub mod body;
 pub mod camera;
 pub mod config;
+pub mod depth;
 pub mod gpu;
 pub mod simulation;
 pub mod window;
@@ -115,7 +116,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
             winit::event::WindowEvent::CloseRequested => self.exit(ev),
             winit::event::WindowEvent::Resized(size) => {
                 let win = self.window.as_mut().unwrap();
-                win.resize(size, &self.config);
+                win.resize(size.width, size.height, &self.config);
             }
             winit::event::WindowEvent::RedrawRequested => {
                 let now = std::time::Instant::now();

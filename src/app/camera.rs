@@ -130,13 +130,15 @@ impl Camera {
         // zoom
         self.pos += self.dir * ctrl.zoom * ctrl.sensitivity_zoom * SENSITIVITY_ZOOM * dt;
 
+        let up_neg = { if self.up.z > 0.0 { 1.0 } else { -1.0 } };
+
         // calc matrices
         let m1 = Mat3::from_axis_angle(
-            self.up_world,
+            self.up_world * up_neg,
             ctrl.horizontal * ctrl.sensitivity_rotate * SENSITIVITY_ROTATE * dt,
         );
         let m2 = Mat3::from_axis_angle(
-            self.right_world,
+            self.right(),
             ctrl.vertical * ctrl.sensitivity_rotate * SENSITIVITY_ROTATE * dt,
         );
         let m = m1 * m2;

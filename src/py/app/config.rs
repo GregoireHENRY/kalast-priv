@@ -52,6 +52,16 @@ impl Config {
     }
 
     #[getter]
+    fn debug_depth_show(&self) -> bool {
+        self.app.borrow().config.debug_depth_show
+    }
+
+    #[setter]
+    fn set_debug_depth_show(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_depth_show = v;
+    }
+
+    #[getter]
     fn title(&self) -> String {
         self.app.borrow().config.title.clone()
     }

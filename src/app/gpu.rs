@@ -21,36 +21,11 @@ pub const SHADER_VERTICES_TEX: wgpu::ShaderModuleDescriptor =
 pub const SHADER_MESH_MAT: wgpu::ShaderModuleDescriptor =
     wgpu::include_wgsl!("../../shaders/mesh_mat.wgsl");
 
-// pentagon
-pub const VERTICES: &[Vertex] = &[
-    Vertex {
-        position: [-0.0868241, 0.49240386, 0.0],
-        tex: [0.4131759, 0.00759614],
-        color: [0.5, 0.0, 0.5],
-    }, // A
-    Vertex {
-        position: [-0.49513406, 0.06958647, 0.0],
-        tex: [0.0048659444, 0.43041354],
-        color: [0.5, 0.0, 0.5],
-    }, // B
-    Vertex {
-        position: [-0.21918549, -0.44939706, 0.0],
-        tex: [0.28081453, 0.949397],
-        color: [0.5, 0.0, 0.5],
-    }, // C
-    Vertex {
-        position: [0.35966998, -0.3473291, 0.0],
-        tex: [0.85967, 0.84732914],
-        color: [0.5, 0.0, 0.5],
-    }, // D
-    Vertex {
-        position: [0.44147372, 0.2347359, 0.0],
-        tex: [0.9414737, 0.2652641],
-        color: [0.5, 0.0, 0.5],
-    }, // E
-];
+pub const SHADER_DEPTH_RENDER: wgpu::ShaderModuleDescriptor =
+    wgpu::include_wgsl!("../../shaders/depth_render.wgsl");
 
-pub const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+
 pub struct Pipelines {
     pub main: RenderPipeline,
     pub more: Vec<RenderPipeline>,
@@ -67,6 +42,7 @@ impl RenderPipeline {
         enable_back_face: bool,
         shader: wgpu::ShaderModuleDescriptor,
         bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
+        depth_stencil: bool,
     ) -> Self {
         // wireframe: bool,
 
@@ -83,8 +59,19 @@ impl RenderPipeline {
 
         let cull_mode = (!enable_back_face).then(|| wgpu::Face::Back);
 
+        let depth_stencil = (depth_stencil).then(|| wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState {
+                constant: 2, // bilinear filtering
+                slope_scale: 2.0,
+                clamp: 0.0,
+            },
+        });
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -111,7 +98,7 @@ impl RenderPipeline {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil,
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -119,6 +106,7 @@ impl RenderPipeline {
             },
             multiview_mask: None,
             cache: None,
+            label: None,
         });
 
         Self { inner: pipeline }
@@ -167,30 +155,6 @@ impl<U: bytemuck::NoUninit> UniformBuffer<U> {
             inner: buffer,
             layout,
             bind_group,
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Vertex {
-    pub position: [f32; 3],
-    pub tex: [f32; 2],
-    pub color: [f32; 3],
-}
-
-impl Vertex {
-    pub const ATTRIBS: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![
-        0 => Float32x3,
-        1 => Float32x2,
-        2 => Float32x3,
-    ];
-
-    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
         }
     }
 }
@@ -284,17 +248,20 @@ impl MeshBuffer {
     }
 }
 
-pub struct Texture {
-    pub inner: wgpu::Texture,
-    pub view: wgpu::TextureView,
-    pub sampler: wgpu::Sampler,
-    pub size: wgpu::Extent3d,
+pub struct TextureBind {
     pub layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
 }
 
+pub struct Texture {
+    pub inner: wgpu::Texture,
+    pub view: wgpu::TextureView,
+    pub sampler: wgpu::Sampler,
+    pub bind: Option<TextureBind>,
+}
+
 impl Texture {
-    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8]) -> Self {
+    pub fn new_image_from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8]) -> Self {
         let image = image::load_from_memory(bytes).unwrap();
         let rgba = image.to_rgba8();
         let dimensions = image.dimensions();
@@ -315,6 +282,17 @@ impl Texture {
             label: None,
         });
 
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &texture,
@@ -330,17 +308,6 @@ impl Texture {
             },
             size,
         );
-
-        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
 
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -379,21 +346,129 @@ impl Texture {
             label: None,
         });
 
+        let bind = Some(TextureBind { layout, bind_group });
+
         Self {
             inner: texture,
             view,
             sampler,
-            size,
-            layout,
-            bind_group,
+            bind,
         }
     }
 
-    pub fn load<P: AsRef<std::path::Path>>(
+    pub fn load_image<P: AsRef<std::path::Path>>(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         path: P,
     ) -> Self {
-        Self::new(device, queue, &std::fs::read(path.as_ref()).unwrap())
+        Self::new_image_from_bytes(device, queue, &std::fs::read(path.as_ref()).unwrap())
+    }
+
+    pub fn create_depth_texture_with_comparison_sampler(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        Self::create_depth_texture(
+            device,
+            width,
+            height,
+            wgpu::FilterMode::Linear,
+            Some(wgpu::CompareFunction::LessEqual),
+        )
+    }
+
+    pub fn create_depth_texture_non_comparison_sampler(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let mut texture =
+            Self::create_depth_texture(device, width, height, wgpu::FilterMode::Nearest, None);
+
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+            ],
+            label: None,
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+            label: None,
+        });
+
+        texture.bind = Some(TextureBind { layout, bind_group });
+        texture
+    }
+
+    pub fn create_depth_texture(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        mag_min_filter: wgpu::FilterMode,
+        compare: Option<wgpu::CompareFunction>,
+    ) -> Self {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: DEPTH_FORMAT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+            label: None,
+        });
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: mag_min_filter,
+            min_filter: mag_min_filter,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            compare,
+            lod_min_clamp: 0.0,
+            lod_max_clamp: 100.0,
+            ..Default::default()
+        });
+
+        Self {
+            inner: texture,
+            view,
+            sampler,
+            bind: None,
+        }
     }
 }

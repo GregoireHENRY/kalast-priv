@@ -226,6 +226,16 @@ impl Projection {
         self.simulation.borrow_mut().camera.projection.zfar = v;
     }
 
+    #[getter]
+    fn side(&self) -> Float {
+        self.simulation.borrow().camera.projection.side
+    }
+
+    #[setter]
+    fn set_side(&mut self, v: Float) {
+        self.simulation.borrow_mut().camera.projection.side = v;
+    }
+
     fn is_orthographic(&self) -> bool {
         self.simulation.borrow().camera.projection.mode
             == crate::app::camera::ProjectionMode::Orthographic

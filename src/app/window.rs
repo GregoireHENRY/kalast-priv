@@ -1,17 +1,8 @@
 use std::sync::Arc;
 
+use glam::Mat4;
+
 use crate::Float;
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Default, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Globals {
-    // 0: flat
-    // 1: texture
-    // 2: diffuse lighting
-    pub color_mode: u32,
-
-    pub extra: u32,
-}
 
 pub struct Window {
     pub window: Arc<winit::window::Window>,
@@ -22,12 +13,12 @@ pub struct Window {
     pub surface_config: wgpu::SurfaceConfiguration,
     pub is_surface_configured: bool,
 
-    pub pipelines: super::gpu::Pipelines,
-    pub texture: super::gpu::Texture,
+    // 0: white cube
+    // 1..: loaded by user in app.simulation.bodies
     pub meshes: Vec<super::gpu::MeshBuffer>,
-    pub camera: super::gpu::UniformBuffer<glam::Mat4>,
-    pub globals: super::gpu::UniformBuffer<Globals>,
-    pub depth: super::depth::DepthPass,
+
+    pub uniforms: super::uniform::Uniforms,
+    pub passes: super::pass::Passes,
 }
 
 impl Window {
@@ -117,13 +108,24 @@ impl Window {
             );
         }
 
-        let texture = super::gpu::Texture::new_image_from_bytes(
-            &device,
-            &queue,
-            include_bytes!("../../res/happy-tree.png"),
-        );
-
         let mut meshes = vec![];
+
+        // TODO: ADD COLOR PER MESH? ask GPT why model matrix is not a uniform
+        // if has to stay like that then ignore color per mesh
+        // render light cube
+
+        meshes.push(super::gpu::MeshBuffer::new(
+            &device,
+            &crate::meshes::cube::VERTICES,
+            &crate::meshes::cube::INDICES,
+            &super::gpu::InstanceInput {
+                // color: super::gpu::color_vec3(&wgpu::Color::WHITE),
+                // color_mode: 1,
+                ..Default::default()
+            },
+            false,
+        ));
+
         for body in simulation.bodies.iter().map(|b| b.borrow()) {
             if let Some(mesh) = body.mesh.as_ref() {
                 let mesh = mesh.borrow();
@@ -133,57 +135,101 @@ impl Window {
                         println!("v: {}", v.pos);
                     }
                     println!("indices: {:?}", &mesh.indices);
-                    println!("mat: {}", body.mat);
+                    println!("mat: {:?}", body.instance.mat);
+                    println!("normal: {:?}", body.instance.normal);
+                    // println!("color: {}", body.instance.color);
+                    // println!("color mode: {}", body.instance.color_mode);
                 }
 
                 meshes.push(super::gpu::MeshBuffer::new(
                     &device,
                     &mesh.vertices,
                     &mesh.indices,
-                    body.mat,
-                ))
+                    &body.instance,
+                    mesh.is_flat(),
+                ));
             }
         }
 
-        let globals = Globals {
-            color_mode: config.shader_color_mode,
-            extra: config.shader_extra,
-        };
-        let globals = super::gpu::UniformBuffer::new(&device, globals);
-
-        let camera_buffer = super::gpu::UniformBuffer::new(
+        let texture = super::gpu::Texture::new_image_from_bytes(
             &device,
-            simulation
-                .camera
-                .view_proj(size.width as Float / size.height as Float)
-                .unwrap(),
+            &queue,
+            include_bytes!("../../res/happy-tree.png"),
+        );
+        let textures = vec![texture];
+
+        let globals = super::gpu::UniformBuffer::new(
+            &device,
+            super::uniform::Globals {
+                color: super::gpu::color_vec3(&config.global_color),
+                color_mode: config.global_color_mode,
+                ambient_strength: config.ambient_strength,
+                extra: config.global_extra,
+                ..Default::default()
+            },
         );
 
-        let pipeline = super::gpu::RenderPipeline::new(
+        let camera = super::gpu::UniformBuffer::new(
+            &device,
+            super::uniform::Camera {
+                view_proj: simulation
+                    .camera
+                    .view_proj(size.width as Float / size.height as Float)
+                    .unwrap(),
+            },
+        );
+
+        let light = {
+            let pos = {
+                if let Some(d) = config.light_distance {
+                    simulation.sun.normalize() * d
+                } else {
+                    simulation.sun
+                }
+            };
+
+            let dir = (config.light_target - pos).normalize();
+            let view = Mat4::look_to_rh(pos, dir, config.light_up);
+
+            let half_height = config.light_side;
+            let half_width = half_height * size.width as f32 / size.height as f32;
+            let proj = Mat4::orthographic_rh(
+                -half_width,
+                half_width,
+                -half_height,
+                half_height,
+                config.light_znear,
+                config.light_zfar,
+            );
+
+            super::gpu::UniformBuffer::new(
+                &device,
+                super::uniform::Light {
+                    view_proj: proj * view,
+                    pos,
+                    color: super::gpu::color_vec3(&config.light_color),
+                    ..Default::default()
+                },
+            )
+        };
+
+        let uniforms = super::uniform::Uniforms {
+            textures,
+            globals,
+            camera,
+            light,
+        };
+
+        let bind_group_layouts = uniforms.bind_group_layouts();
+        let bindings = uniforms.bind_groups(&device);
+
+        let passes = super::pass::Passes::new(
             &device,
             surface_config.format,
-            config.enable_back_face,
-            super::gpu::SHADER_MESH_MAT,
-            &[
-                Some(&texture.bind.as_ref().unwrap().layout),
-                Some(&camera_buffer.layout),
-                Some(&globals.layout),
-            ],
-            true,
+            &config,
+            &bind_group_layouts,
+            bindings,
         );
-
-        let pipelines = super::gpu::Pipelines {
-            main: pipeline,
-            more: vec![],
-        };
-
-        // let depth = super::gpu::Texture::create_depth_texture_with_comparison_sampler(
-        //     &device,
-        //     size.width,
-        //     size.height,
-        // );
-
-        let depth = super::depth::DepthPass::new(&device, &surface_config);
 
         Self {
             window,
@@ -194,12 +240,9 @@ impl Window {
             surface_config,
             is_surface_configured: false,
 
-            pipelines,
-            texture,
             meshes,
-            camera: camera_buffer,
-            globals,
-            depth,
+            uniforms,
+            passes,
         }
     }
 
@@ -233,13 +276,7 @@ impl Window {
         self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
 
-        // self.depth = super::gpu::Texture::create_depth_texture_with_comparison_sampler(
-        //     &self.device,
-        //     size.width,
-        //     size.height,
-        // );
-
-        self.depth.resize(&self.device, width, height);
+        self.passes.depth.resize(&self.device, width, height);
 
         let is_surface_configured = self.is_surface_configured;
         self.is_surface_configured = true;
@@ -253,8 +290,9 @@ impl Window {
     pub fn update(&mut self, simulation: &crate::app::simulation::Simulation) {
         let width = self.surface_config.width;
         let height = self.surface_config.height;
+
         self.queue.write_buffer(
-            &self.camera.inner,
+            &self.uniforms.camera.buffer,
             0,
             bytemuck::cast_slice(&[simulation
                 .camera
@@ -306,42 +344,8 @@ impl Window {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        // render pass in {} for mut borrow encoder to release before calling finish
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(config.background),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth.texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Store,
-                    }),
-                    stencil_ops: None,
-                }),
-                ..Default::default()
-            });
-
-            render_pass.set_pipeline(&self.pipelines.main.inner);
-            render_pass.set_bind_group(0, &self.texture.bind.as_ref().unwrap().bind_group, &[]);
-            render_pass.set_bind_group(1, &self.globals.bind_group, &[]);
-            render_pass.set_bind_group(2, &self.camera.bind_group, &[]);
-
-            for mesh in &self.meshes {
-                mesh.render(&mut render_pass);
-            }
-        }
-
-        if config.debug_depth_show {
-            self.depth.render(&view, &mut encoder);
-        }
+        self.passes
+            .render(&view, &mut encoder, &self.meshes, config);
 
         self.queue.submit([encoder.finish()]);
         texture.present();

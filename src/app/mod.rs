@@ -1,10 +1,11 @@
 pub mod body;
 pub mod camera;
 pub mod config;
-pub mod depth;
 pub mod gpu;
 pub mod simulation;
 pub mod window;
+pub mod pass;
+pub mod uniform;
 
 use std::{cell::RefCell, rc::Rc};
 

@@ -1,9 +1,7 @@
 struct Globals {
     color: vec3<f32>,
     color_mode: u32,
-    
     ambient_strength: f32,
-    
     extra: u32,
 };
 @group(0) @binding(0)
@@ -98,6 +96,11 @@ var t_diffuse: texture_2d<f32>;
 @group(3) @binding(1)
 var s_diffuse: sampler;
 
+@group(4) @binding(0)
+var t_shadow: texture_depth_2d;
+@group(4) @binding(1)
+var s_shadow: sampler_comparison;
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var object_color: vec4<f32>;
@@ -114,13 +117,29 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         return vec4<f32>(1.0, 1.0, 1.0, 1.0);
     }
 
+    // shadow
+    // maybe needed to flip Y
+    // let uv = vec2<f32>(proj.x, -proj.y) * 0.5 + 0.5;
+    let light_space = light.view_proj * vec4<f32>(in.world_pos, 1.0);
+    let proj = light_space.xyz / light_space.w;
+    let uv = proj.xy * 0.5 + 0.5;
+    let depth = proj.z * 0.5 + 0.5;
+    let bias = 0.005; // to avoid acne
+    let shadow = textureSampleCompare(
+        t_shadow,
+        s_shadow,
+        uv,
+        depth - bias
+    );
+
     // ambient
     let ambient_color = light.color * globals.ambient_strength;
 
     // diffuse
     let light_dir = normalize(light.pos - in.world_pos);
     let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    let diffuse_color = light.color * diffuse_strength;
+    // let diffuse_color = light.color * diffuse_strength;
+    let diffuse_color = light.color * diffuse_strength * shadow;
 
     let result = (ambient_color + diffuse_color) * object_color.xyz;
 

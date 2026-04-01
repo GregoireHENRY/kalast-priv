@@ -40,14 +40,20 @@ impl Simulation {
 
     #[pyo3(signature = (
         mesh=None,
+        instance=None,
         mat=None,
+        // color=None,
+        // color_mode=None,
         entity=None,
         body=None
     ))]
     fn add_body(
         &mut self,
         mesh: Option<crate::py::mesh::Mesh>,
+        instance: Option<super::gpu::InstanceInput>,
         mat: Option<Bound<'_, numpy::PyArray2<Float>>>,
+        // color: Option<Bound<'_, numpy::PyArray1<Float>>>,
+        // color_mode: Option<u32>,
         entity: Option<crate::py::entity::Body>,
         body: Option<super::body::Body>,
     ) {
@@ -57,7 +63,13 @@ impl Simulation {
             .push(if let Some(body) = body {
                 body.inner.clone()
             } else {
-                super::body::Body::new(mesh, mat, entity).inner.clone()
+                let instance = instance.unwrap_or(super::gpu::InstanceInput::new(
+                    mat,
+                    // color, color_mode
+                ));
+                super::body::Body::new(mesh, Some(instance), entity)
+                    .inner
+                    .clone()
             });
     }
 

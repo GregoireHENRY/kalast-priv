@@ -8,6 +8,7 @@ pub mod routines;
 pub mod spice;
 pub mod tpm;
 pub mod util;
+pub mod meshes;
 
 pub type UVec2 = glam::USizeVec2;
 

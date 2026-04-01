@@ -1,4 +1,4 @@
-use crate::Float;
+use crate::{Float, Vec3};
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -7,21 +7,33 @@ pub struct Config {
     pub debug_window_mesh: bool,
     pub debug_simulation: bool,
     pub debug_depth_show: bool,
+    pub debug_light_cube_show: bool,
 
     pub title: String,
     pub width: u32,
     pub height: u32,
 
     pub background: wgpu::Color,
-    pub enable_back_face: bool,
+    pub render_back_face: bool,
 
     pub sensitivity_move: Float,
     pub sensitivity_look: Float,
     pub sensitivity_rotate: Float,
     pub sensitivity_zoom: Float,
 
-    pub shader_color_mode: u32,
-    pub shader_extra: u32,
+    pub global_color: wgpu::Color,
+    pub global_color_mode: u32,
+    pub global_extra: u32,
+
+    pub light_distance: Option<Float>,
+    pub light_color: wgpu::Color,
+    pub light_target: Vec3,
+    pub light_up: Vec3,
+    pub light_znear: Float,
+    pub light_zfar: Float,
+    pub light_side: Float,
+
+    pub ambient_strength: f32,
 }
 
 impl Default for Config {
@@ -32,21 +44,33 @@ impl Default for Config {
             debug_window_mesh: false,
             debug_simulation: false,
             debug_depth_show: false,
+            debug_light_cube_show: false,
 
             title: "kalast".to_string(),
             width: 800,
             height: 600,
 
             background: wgpu::Color::BLACK,
-            enable_back_face: false,
+            render_back_face: false,
 
             sensitivity_move: 1.0,
             sensitivity_look: 1.0,
             sensitivity_rotate: 1.0,
             sensitivity_zoom: 1.0,
 
-            shader_color_mode: 0,
-            shader_extra: 0,
+            global_color: wgpu::Color::WHITE,
+            global_color_mode: 0,
+            global_extra: 0,
+
+            light_distance: None,
+            light_color: wgpu::Color::WHITE,
+            light_target: Vec3::new(0.0, 0.0, 0.0),
+            light_up: Vec3::new(0.0, 0.0, 1.0),
+            light_znear: 0.1,
+            light_zfar: 100.0,
+            light_side: 10.0,
+
+            ambient_strength: 0.0,
         }
     }
 }

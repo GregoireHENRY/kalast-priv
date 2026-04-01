@@ -255,6 +255,35 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         .getattr("modules")?
         .set_item("kalast._rs.app._core", &core)?;
 
+    let body = PyModule::new(app.py(), "body")?;
+    body.add_class::<app::body::Body>()?;
+    app.add_submodule(&body)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.app.body", &body)?;
+
+    let camera = PyModule::new(app.py(), "camera")?;
+    camera.add_class::<app::camera::Camera>()?;
+    camera.add_class::<app::camera::Projection>()?;
+    app.add_submodule(&camera)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.app.camera", &camera)?;
+
+    let config = PyModule::new(app.py(), "config")?;
+    config.add_class::<app::config::Config>()?;
+    app.add_submodule(&config)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.app.config", &config)?;
+
+    let gpu = PyModule::new(app.py(), "gpu")?;
+    gpu.add_class::<app::gpu::InstanceInput>()?;
+    app.add_submodule(&gpu)?;
+    py.import("sys")?
+        .getattr("modules")?
+        .set_item("kalast._rs.app.gpu", &gpu)?;
+
     let simulation = PyModule::new(app.py(), "simulation")?;
     simulation.add_class::<app::simulation::Simulation>()?;
     simulation.add_class::<app::simulation::State>()?;
@@ -262,21 +291,6 @@ fn python_module(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     py.import("sys")?
         .getattr("modules")?
         .set_item("kalast._rs.app.simulation", &simulation)?;
-
-    let camera = PyModule::new(app.py(), "camera")?;
-    camera.add_class::<app::camera::Camera>()?;
-    camera.add_class::<app::camera::Projection>()?;
-    app.add_submodule(&simulation)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("kalast._rs.app.camera", &camera)?;
-    
-    let config = PyModule::new(app.py(), "config")?;
-    config.add_class::<app::config::Config>()?;
-    app.add_submodule(&config)?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("kalast._rs.app.config", &config)?;
 
     // let routines = PyModule::new(m.py(), "routines")?;
     // m.add_submodule(&routines)?;

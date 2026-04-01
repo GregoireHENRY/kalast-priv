@@ -62,6 +62,16 @@ impl Config {
     }
 
     #[getter]
+    fn debug_light_cube_show(&self) -> bool {
+        self.app.borrow().config.debug_light_cube_show
+    }
+
+    #[setter]
+    fn set_debug_light_cube_show(&mut self, v: bool) {
+        self.app.borrow_mut().config.debug_light_cube_show = v;
+    }
+
+    #[getter]
     fn title(&self) -> String {
         self.app.borrow().config.title.clone()
     }
@@ -92,7 +102,7 @@ impl Config {
     }
 
     #[getter]
-    pub fn get_background(&self) -> [Float; 4] {
+    pub fn background(&self) -> [Float; 4] {
         let v = self.app.borrow().config.background;
         [v.r as Float, v.g as Float, v.b as Float, v.a as Float]
     }
@@ -107,13 +117,13 @@ impl Config {
     }
 
     #[getter]
-    fn enable_back_face(&self) -> bool {
-        self.app.borrow().config.enable_back_face
+    fn render_back_face(&self) -> bool {
+        self.app.borrow().config.render_back_face
     }
 
     #[setter]
-    fn set_enable_back_face(&mut self, v: bool) {
-        self.app.borrow_mut().config.enable_back_face = v;
+    fn set_render_back_face(&mut self, v: bool) {
+        self.app.borrow_mut().config.render_back_face = v;
     }
 
     #[getter]
@@ -157,23 +167,123 @@ impl Config {
     }
 
     #[getter]
-    fn shader_color_mode(&self) -> u32 {
-        self.app.borrow().config.shader_color_mode
+    pub fn global_color(&self) -> [Float; 4] {
+        let v = self.app.borrow().config.global_color;
+        [v.r as Float, v.g as Float, v.b as Float, v.a as Float]
     }
 
     #[setter]
-    fn set_shader_color_mode(&mut self, v: u32) {
-        self.app.borrow_mut().config.shader_color_mode = v;
+    pub fn set_global_color(&mut self, v: [Float; 4]) {
+        let c = &mut self.app.borrow_mut().config.global_color;
+        c.r = v[0] as f64;
+        c.g = v[1] as f64;
+        c.b = v[2] as f64;
+        c.a = v[3] as f64;
     }
 
     #[getter]
-    fn shader_extra(&self) -> u32 {
-        self.app.borrow().config.shader_extra
+    fn global_color_mode(&self) -> u32 {
+        self.app.borrow().config.global_color_mode
     }
 
     #[setter]
-    fn set_shader_extra(&mut self, v: u32) {
-        self.app.borrow_mut().config.shader_extra = v;
+    fn set_global_color_mode(&mut self, v: u32) {
+        self.app.borrow_mut().config.global_color_mode = v;
+    }
+
+    #[getter]
+    fn global_extra(&self) -> u32 {
+        self.app.borrow().config.global_extra
+    }
+
+    #[setter]
+    fn set_global_extra(&mut self, v: u32) {
+        self.app.borrow_mut().config.global_extra = v;
+    }
+
+    #[getter]
+    fn light_distance(&self) -> Option<Float> {
+        self.app.borrow().config.light_distance
+    }
+
+    #[setter]
+    fn set_light_distance(&mut self, v: Option<Float>) {
+        self.app.borrow_mut().config.light_distance = v;
+    }
+
+    #[getter]
+    pub fn light_color(&self) -> [Float; 4] {
+        let v = self.app.borrow().config.light_color;
+        [v.r as Float, v.g as Float, v.b as Float, v.a as Float]
+    }
+
+    #[setter]
+    pub fn set_light_color(&mut self, v: [Float; 4]) {
+        let c = &mut self.app.borrow_mut().config.light_color;
+        c.r = v[0] as f64;
+        c.g = v[1] as f64;
+        c.b = v[2] as f64;
+        c.a = v[3] as f64;
+    }
+
+    #[getter]
+    pub fn light_target(&self) -> [Float; 3] {
+        self.app.borrow().config.light_target.into()
+    }
+
+    #[setter]
+    pub fn set_light_target(&mut self, v: [Float; 3]) {
+        self.app.borrow_mut().config.light_target = v.into();
+    }
+
+    #[getter]
+    pub fn light_up(&self) -> [Float; 3] {
+        self.app.borrow().config.light_up.into()
+    }
+
+    #[setter]
+    pub fn set_light_up(&mut self, v: [Float; 3]) {
+        self.app.borrow_mut().config.light_up = v.into();
+    }
+
+    #[getter]
+    fn light_znear(&self) -> Float {
+        self.app.borrow().config.light_znear
+    }
+
+    #[setter]
+    fn set_light_znear(&mut self, v: Float) {
+        self.app.borrow_mut().config.light_znear = v;
+    }
+
+    #[getter]
+    fn light_zfar(&self) -> Float {
+        self.app.borrow().config.light_zfar
+    }
+
+    #[setter]
+    fn set_light_zfar(&mut self, v: Float) {
+        self.app.borrow_mut().config.light_zfar = v;
+    }
+
+    #[getter]
+    fn light_side(&self) -> Float {
+        self.app.borrow().config.light_side
+    }
+
+    #[setter]
+    fn set_light_side(&mut self, v: Float) {
+        self.app.borrow_mut().config.light_side = v;
+    }
+
+    #[getter]
+    fn ambient_strength(&self) -> Float {
+        self.app.borrow().config.ambient_strength
+    }
+
+    #[setter]
+    fn set_ambient_strength(&mut self, v: Float) {
+        self.app.borrow_mut().config.ambient_strength = v;
     }
 
     fn __repr__(&self) -> String {

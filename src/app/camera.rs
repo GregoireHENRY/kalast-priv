@@ -1,16 +1,16 @@
-use crate::{Float, Mat3, Mat4, Vec3, Vec4};
+use crate::{Float, Mat3, Mat4, Vec3};
 
 pub const SENSITIVITY_MOVE: Float = 4.0;
 pub const SENSITIVITY_LOOK: Float = 0.1;
 pub const SENSITIVITY_ROTATE: Float = 0.1;
 pub const SENSITIVITY_ZOOM: Float = 6e2;
 
-pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
-    Vec4::new(1.0, 0.0, 0.0, 0.0),
-    Vec4::new(0.0, 1.0, 0.0, 0.0),
-    Vec4::new(0.0, 0.0, 0.5, 0.0),
-    Vec4::new(0.0, 0.0, 0.5, 1.0),
-);
+//pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
+//    Vec4::new(1.0, 0.0, 0.0, 0.0),
+//    Vec4::new(0.0, 1.0, 0.0, 0.0),
+//    Vec4::new(0.0, 0.0, 0.5, 0.0),
+//    Vec4::new(0.0, 0.0, 0.5, 1.0),
+//);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Control {
@@ -25,8 +25,7 @@ pub struct Camera {
     pub dir: Vec3, // unit vector
     pub up: Vec3,  // unit vector
     pub anchor: Vec3,
-    pub up_world: Vec3,    // unit vector
-    pub right_world: Vec3, // unit vector
+    pub up_world: Vec3, // unit vector
     pub control: Control,
     pub projection: Projection,
 }
@@ -39,7 +38,6 @@ impl Camera {
             up: Vec3::new(0.0, 0.0, 1.0),
             anchor: Vec3::new(0.0, 0.0, 0.0),
             up_world: Vec3::new(0.0, 0.0, 1.0),
-            right_world: Vec3::new(1.0, 0.0, 0.0),
             control: Control::Arcball,
             projection: Projection::new(),
         }
@@ -85,7 +83,10 @@ impl Camera {
     }
 
     pub fn view_proj(&self, aspect: Float) -> anyhow::Result<Mat4> {
-        Ok(OPENGL_TO_WGPU_MATRIX * self.projection.mat(aspect) * self.lookto()?)
+        Ok(
+            // OPENGL_TO_WGPU_MATRIX *
+            self.projection.mat(aspect) * self.lookto()?,
+        )
     }
 
     pub fn mat(&self) -> Mat3 {
@@ -175,19 +176,21 @@ impl Camera {
 
 #[derive(Debug, Clone)]
 pub struct Projection {
+    pub mode: ProjectionMode,
     pub fovy: Float, // radian
     pub znear: Float,
     pub zfar: Float,
-    pub mode: ProjectionMode,
+    pub side: Float,
 }
 
 impl Projection {
     pub fn new() -> Self {
         Self {
-            fovy: 0.3491, // ~20 degrees
-            znear: 0.01,
-            zfar: 10.0,
             mode: ProjectionMode::Perspective,
+            fovy: 0.7854, // ~45 degrees
+            znear: 0.01,
+            zfar: 100.0,
+            side: 5.0,
         }
     }
 
@@ -196,12 +199,14 @@ impl Projection {
     pub fn mat(&self, aspect: Float) -> Mat4 {
         match self.mode {
             ProjectionMode::Orthographic => {
-                let side = self.zfar;
+                let half_height = self.side;
+                let half_width = half_height * aspect;
+
                 Mat4::orthographic_rh(
-                    side * aspect,
-                    side * aspect,
-                    side,
-                    side,
+                    -half_width,
+                    half_width,
+                    -half_height,
+                    half_height,
                     self.znear,
                     self.zfar,
                 )

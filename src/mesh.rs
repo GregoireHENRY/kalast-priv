@@ -13,6 +13,8 @@ pub const BITANGENT_OFFSET: usize = 11;
 pub const COLOR_OFFSET: usize = 14;
 pub const COLOR_MODE_OFFSET: usize = 17;
 
+pub const MESH_CUBE: &'static str = include_str!("../res/cube.obj");
+
 // pub const EPSILON_INTERSECT_TRIANGLE: Float = 1e-3;
 
 // getter glam::Vec3 to numpy
@@ -67,7 +69,7 @@ impl Vertex {
             normal: Vec3::new(0.0, 0.0, 0.0),
             tangent: Vec3::new(0.0, 0.0, 0.0),
             bitangent: Vec3::new(0.0, 0.0, 0.0),
-            color: Vec3::new(0.0, 0.0, 0.0),
+            color: Vec3::new(1.0, 1.0, 1.0),
             color_mode: 0,
             extra: 0,
         }

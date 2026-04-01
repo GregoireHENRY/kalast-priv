@@ -1,10 +1,14 @@
 from kalast.app import (  # noqa
-    simulation,
     _core,
+    body,
+    camera,
+    config,
+    gpu,
+    simulation,
 )
 
-from kalast.app._core import ( # noqa
-    App
+from kalast.app._core import (  # noqa
+    App,
 )
 
 del _core

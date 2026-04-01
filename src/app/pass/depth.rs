@@ -1,4 +1,5 @@
-use crate::{Mat4, Vec2, Vec3};
+use crate::app::gpu;
+use crate::{Vec2, Vec3};
 
 const DEPTH_VERTICES: &[crate::mesh::Vertex] = &[
     crate::mesh::Vertex {
@@ -25,45 +26,59 @@ const DEPTH_VERTICES: &[crate::mesh::Vertex] = &[
 
 const DEPTH_INDICES: &[u32] = &[0, 1, 2, 0, 2, 3];
 
-pub struct DepthPass {
-    pub texture: super::gpu::Texture,
-    pub mesh: super::gpu::MeshBuffer,
+pub struct Pass {
+    pub mesh: gpu::MeshBuffer,
+    pub texture: gpu::Texture,
+    pub bind_group: wgpu::BindGroup,
 
-    pub pipeline: super::gpu::RenderPipeline,
+    pub pipeline: gpu::RenderPipeline,
 }
 
-impl DepthPass {
-    pub fn new(device: &wgpu::Device, surface_config: &wgpu::SurfaceConfiguration) -> Self {
-        let texture = super::gpu::Texture::create_depth_texture_non_comparison_sampler(
+impl Pass {
+    pub fn new(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        format: wgpu::TextureFormat,
+    ) -> Self {
+        let mesh = gpu::MeshBuffer::new(
             device,
-            surface_config.width,
-            surface_config.height,
+            DEPTH_VERTICES,
+            DEPTH_INDICES,
+            &gpu::InstanceInput::default(),
+            false,
         );
 
-        let mesh =
-            super::gpu::MeshBuffer::new(device, DEPTH_VERTICES, DEPTH_INDICES, Mat4::IDENTITY);
+        let texture =
+            gpu::Texture::create_depth_texture_non_comparison_sampler(device, width, height);
+        let layouts = &[Some(texture.layout.as_ref().unwrap())];
+        let bind_group = texture.bind_group(device).unwrap();
 
-        let pipeline = super::gpu::RenderPipeline::new(
+        let pipeline = gpu::RenderPipeline::new(
             &device,
-            surface_config.format,
+            format,
             false,
-            super::gpu::SHADER_DEPTH_RENDER,
-            &[Some(&texture.bind.as_ref().unwrap().layout)],
+            gpu::SHADER_DEPTH_RENDER,
+            layouts,
             false,
+            true,
         );
 
         Self {
-            texture,
-            mesh,
             pipeline,
+
+            mesh,
+
+            texture,
+            bind_group,
         }
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         self.texture =
-            super::gpu::Texture::create_depth_texture_non_comparison_sampler(device, width, height);
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.texture.bind.as_ref().unwrap().layout,
+            gpu::Texture::create_depth_texture_non_comparison_sampler(device, width, height);
+        self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: self.texture.layout.as_ref().unwrap(),
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -76,8 +91,6 @@ impl DepthPass {
             ],
             label: None,
         });
-
-        self.texture.bind.as_mut().unwrap().bind_group = bind_group;
     }
 
     pub fn render(&self, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
@@ -97,8 +110,11 @@ impl DepthPass {
             multiview_mask: None,
             label: None,
         });
+
         render_pass.set_pipeline(&self.pipeline.inner);
-        render_pass.set_bind_group(0, &self.texture.bind.as_ref().unwrap().bind_group, &[]);
+
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
+
         self.mesh.render(&mut render_pass);
     }
 }

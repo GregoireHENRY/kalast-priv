@@ -2,6 +2,7 @@ pub mod body;
 pub mod camera;
 pub mod config;
 pub mod simulation;
+pub mod gpu;
 
 use std::{cell::RefCell, rc::Rc};
 

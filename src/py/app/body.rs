@@ -1,15 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
-use numpy::PyArrayMethods;
-// use numpy::{PyArrayMethods, ToPyArray};
 use pyo3::prelude::*;
-
-use crate::{Float, Mat4};
 
 #[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Body {
-    // pub simulation: Rc<RefCell<crate::app::simulation::Simulation>>,
     pub inner: Rc<RefCell<crate::app::body::Body>>,
 }
 
@@ -18,12 +13,12 @@ impl Body {
     #[new]
     #[pyo3(signature = (
         mesh=None,
-        mat=None,
+        instance=None,
         entity=None,
     ))]
     pub fn new(
         mesh: Option<crate::py::mesh::Mesh>,
-        mat: Option<Bound<'_, numpy::PyArray2<Float>>>,
+        instance: Option<super::gpu::InstanceInput>,
         entity: Option<crate::py::entity::Body>,
     ) -> Self {
         let mut body = crate::app::body::Body::new();
@@ -32,10 +27,8 @@ impl Body {
             body.mesh = Some(mesh.inner.clone());
         }
 
-        if let Some(mat) = mat {
-            unsafe {
-                body.mat = Mat4::from_cols_slice(mat.as_slice().unwrap()).transpose();
-            }
+        if let Some(instance) = instance {
+            body.instance = instance.inner.borrow().clone();
         };
 
         if let Some(entity) = entity {

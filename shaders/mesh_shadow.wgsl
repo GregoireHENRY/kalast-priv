@@ -2,6 +2,11 @@ struct Globals {
     color: vec3<f32>,
     color_mode: u32,
     ambient_strength: f32,
+    shadow_resolution: u32,
+    shadow_bias_scale: f32,
+    shadow_bias_minimum: f32,
+    shadow_normal_offset_scale: f32,
+    shadow_pcf: u32,
     extra: u32,
 };
 @group(0) @binding(0)
@@ -10,16 +15,19 @@ var<uniform> globals: Globals;
 struct Camera {
     view_proj: mat4x4<f32>,
 };
-@group(1) @binding(0)
-var<uniform> camera: Camera;
 
 struct Light {
     view_proj: mat4x4<f32>,
     pos: vec3<f32>,
     color: vec3<f32>,
 };
-@group(2) @binding(0)
-var<uniform> light: Light;
+
+struct View {
+    camera: Camera,
+    light: Light,
+};
+@group(1) @binding(0)
+var<uniform> view: View;
 
 struct InstanceInput {
     @location(8) mat_row_0: vec4<f32>,
@@ -81,67 +89,83 @@ fn vs_main(
 
     out.color = vertex.color;
 
-    // out.world_normal = normal_matrix * vertex.normal;
     out.world_normal = normalize(normal_matrix * vertex.normal);
 
     var world_pos = model_matrix * vec4<f32>(vertex.pos, 1.0);
     out.world_pos = world_pos.xyz;
 
-    out.clip_position = camera.view_proj * world_pos;
+    out.clip_position = view.camera.view_proj * world_pos;
+
     return out;
 }
 
-@group(3) @binding(0)
-var t_diffuse: texture_2d<f32>;
-@group(3) @binding(1)
-var s_diffuse: sampler;
-
-@group(4) @binding(0)
+@group(2) @binding(0)
 var t_shadow: texture_depth_2d;
-@group(4) @binding(1)
+@group(2) @binding(1)
 var s_shadow: sampler_comparison;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     var object_color: vec4<f32>;
 
-    if globals.color_mode == 0 {
-        object_color = vec4<f32>(in.color, 1.0);
-    } else if globals.color_mode == 1 {
+    if globals.color_mode == 1 {
         return vec4<f32>(in.color, 1.0);
     } else if globals.color_mode == 2 {
         return vec4<f32>(globals.color.x, globals.color.y, globals.color.z, 1.0);
-    } else if globals.color_mode == 3 {
-        object_color = textureSample(t_diffuse, s_diffuse, in.tex);
-    } else {
-        return vec4<f32>(1.0, 1.0, 1.0, 1.0);
+    }
+    // } else if globals.color_mode == ??? {
+    // object_color = textureSample(t_diffuse, s_diffuse, in.tex);
+
+    // 0 or else
+    else {
+        object_color = vec4<f32>(in.color, 1.0);
     }
 
+    let light_dir = normalize(view.light.pos - in.world_pos);
+    let ndotl = max(dot(in.world_normal, light_dir), 0.0);
+    let k = 1.0 - ndotl;
+    let k2 = k * k;
+
     // shadow
-    // maybe needed to flip Y
-    // let uv = vec2<f32>(proj.x, -proj.y) * 0.5 + 0.5;
-    let light_space = light.view_proj * vec4<f32>(in.world_pos, 1.0);
-    let proj = light_space.xyz / light_space.w;
+    let normal_offset = globals.shadow_normal_offset_scale * k;
+    let offset_pos = in.world_pos + in.world_normal * normal_offset;
+    let light_space = view.light.view_proj * vec4<f32>(offset_pos, 1.0);
+    var proj = light_space.xyz / light_space.w;
+    proj.y = -proj.y;
     let uv = proj.xy * 0.5 + 0.5;
-    let depth = proj.z * 0.5 + 0.5;
-    let bias = 0.005; // to avoid acne
-    let shadow = textureSampleCompare(
-        t_shadow,
-        s_shadow,
-        uv,
-        depth - bias
-    );
+    let depth = proj.z;
+    let bias = max(globals.shadow_bias_scale * k2, globals.shadow_bias_minimum);
 
-    // ambient
-    let ambient_color = light.color * globals.ambient_strength;
+    var shadow = 1.0;
 
-    // diffuse
-    let light_dir = normalize(light.pos - in.world_pos);
-    let diffuse_strength = max(dot(in.world_normal, light_dir), 0.0);
-    // let diffuse_color = light.color * diffuse_strength;
-    let diffuse_color = light.color * diffuse_strength * shadow;
+    if globals.shadow_pcf == 0 {
+        shadow = textureSampleCompare(
+            t_shadow,
+            s_shadow,
+            uv,
+            depth - bias
+        );
+    }
+    else {
+        let texel_size = 1.0 / vec2<f32>(f32(globals.shadow_resolution));
+        for (var x = -i32(globals.shadow_pcf); x <= i32(globals.shadow_pcf); x++) {
+            for (var y = -i32(globals.shadow_pcf); y <= i32(globals.shadow_pcf); y++) {
+                let offset = vec2<f32>(f32(x), f32(y)) * texel_size;
+                shadow += textureSampleCompare(t_shadow, s_shadow, uv + offset, depth - bias);
+            }
+        }
+        shadow /= pow(f32(globals.shadow_pcf * 2 + 1), 2.0);
+    }
 
-    let result = (ambient_color + diffuse_color) * object_color.xyz;
+    // no shadow
+    if globals.color_mode == 3 {
+        shadow = 1.0;
+    }
+
+    // lighting
+    let ambient_color = view.light.color * globals.ambient_strength;
+    let diffuse_color = view.light.color * ndotl;
+    let result = (ambient_color + diffuse_color * shadow) * object_color.xyz;
 
     return vec4<f32>(result, object_color.a);
 }

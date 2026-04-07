@@ -151,33 +151,40 @@ impl Window {
             }
         }
 
+        /*
         let texture = super::gpu::Texture::new_image_from_bytes(
             &device,
             &queue,
             include_bytes!("../../res/happy-tree.png"),
         );
         let textures = vec![texture];
+        */
 
         let globals = super::gpu::UniformBuffer::new(
             &device,
             super::uniform::Globals {
                 color: super::gpu::color_vec3(&config.global_color),
                 color_mode: config.global_color_mode,
+
                 ambient_strength: config.ambient_strength,
+
+                shadow_resolution: config.shadow_resolution,
+                shadow_bias_scale: config.shadow_bias_scale,
+                shadow_bias_minimum: config.shadow_bias_minimum,
+                shadow_normal_offset_scale: config.shadow_normal_offset_scale,
+                shadow_pcf: config.shadow_pcf,
+
                 extra: config.global_extra,
                 ..Default::default()
             },
         );
 
-        let camera = super::gpu::UniformBuffer::new(
-            &device,
-            super::uniform::Camera {
-                view_proj: simulation
-                    .camera
-                    .view_proj(size.width as Float / size.height as Float)
-                    .unwrap(),
-            },
-        );
+        let camera = super::uniform::Camera {
+            view_proj: simulation
+                .camera
+                .view_proj(size.width as Float / size.height as Float)
+                .unwrap(),
+        };
 
         let light = {
             let pos = {
@@ -191,45 +198,38 @@ impl Window {
             let dir = (config.light_target - pos).normalize();
             let view = Mat4::look_to_rh(pos, dir, config.light_up);
 
-            let half_height = config.light_side;
-            let half_width = half_height * size.width as f32 / size.height as f32;
             let proj = Mat4::orthographic_rh(
-                -half_width,
-                half_width,
-                -half_height,
-                half_height,
+                -config.light_side,
+                config.light_side,
+                -config.light_side,
+                config.light_side,
                 config.light_znear,
                 config.light_zfar,
             );
 
-            super::gpu::UniformBuffer::new(
-                &device,
-                super::uniform::Light {
-                    view_proj: proj * view,
-                    pos,
-                    color: super::gpu::color_vec3(&config.light_color),
-                    ..Default::default()
-                },
-            )
+            super::uniform::Light {
+                view_proj: proj * view,
+                pos,
+                color: super::gpu::color_vec3(&config.light_color),
+                ..Default::default()
+            }
         };
+
+        let view = super::gpu::UniformBuffer::new(&device, super::uniform::View { camera, light });
+
+        let shadow = super::gpu::Texture::create_depth_texture_shadow_pass(
+            &device,
+            config.shadow_resolution,
+            config.shadow_resolution,
+        );
 
         let uniforms = super::uniform::Uniforms {
-            textures,
             globals,
-            camera,
-            light,
+            view,
+            shadow,
         };
 
-        let bind_group_layouts = uniforms.bind_group_layouts();
-        let bindings = uniforms.bind_groups(&device);
-
-        let passes = super::pass::Passes::new(
-            &device,
-            surface_config.format,
-            &config,
-            &bind_group_layouts,
-            bindings,
-        );
+        let passes = super::pass::Passes::new(&device, surface_config.format, &config, &uniforms);
 
         Self {
             window,
@@ -291,13 +291,15 @@ impl Window {
         let width = self.surface_config.width;
         let height = self.surface_config.height;
 
+        self.uniforms.view.uniform.camera.view_proj = simulation
+            .camera
+            .view_proj(width as Float / height as Float)
+            .unwrap();
+
         self.queue.write_buffer(
-            &self.uniforms.camera.buffer,
+            &self.uniforms.view.buffer,
             0,
-            bytemuck::cast_slice(&[simulation
-                .camera
-                .view_proj(width as Float / height as Float)
-                .unwrap()]),
+            bytemuck::bytes_of(&self.uniforms.view.uniform),
         );
     }
 
@@ -344,8 +346,13 @@ impl Window {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
-        self.passes
-            .render(&view, &mut encoder, &self.meshes, config);
+        self.passes.render(
+            &mut encoder,
+            &view,
+            &self.uniforms.shadow,
+            &self.meshes,
+            config,
+        );
 
         self.queue.submit([encoder.finish()]);
         texture.present();

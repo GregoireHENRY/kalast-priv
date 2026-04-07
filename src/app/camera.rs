@@ -5,13 +5,6 @@ pub const SENSITIVITY_LOOK: Float = 0.1;
 pub const SENSITIVITY_ROTATE: Float = 0.1;
 pub const SENSITIVITY_ZOOM: Float = 6e2;
 
-//pub const OPENGL_TO_WGPU_MATRIX: Mat4 = Mat4::from_cols(
-//    Vec4::new(1.0, 0.0, 0.0, 0.0),
-//    Vec4::new(0.0, 1.0, 0.0, 0.0),
-//    Vec4::new(0.0, 0.0, 0.5, 0.0),
-//    Vec4::new(0.0, 0.0, 0.5, 1.0),
-//);
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Control {
     Arcball,
@@ -83,10 +76,7 @@ impl Camera {
     }
 
     pub fn view_proj(&self, aspect: Float) -> anyhow::Result<Mat4> {
-        Ok(
-            // OPENGL_TO_WGPU_MATRIX *
-            self.projection.mat(aspect) * self.lookto()?,
-        )
+        Ok(self.projection.mat(aspect) * self.lookto()?)
     }
 
     pub fn mat(&self) -> Mat3 {
@@ -187,7 +177,7 @@ impl Projection {
     pub fn new() -> Self {
         Self {
             mode: ProjectionMode::Perspective,
-            fovy: 0.7854, // ~45 degrees
+            fovy: 0.5236, // ~45 degrees
             znear: 0.01,
             zfar: 100.0,
             side: 5.0,

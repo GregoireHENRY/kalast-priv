@@ -7,13 +7,12 @@ import kalast
 
 app = kalast.app.App()
 
-# app.config.shader_color_mode = 0
-# app.config.shader_color = [1.0, 1.0, 1.0, 0.0]
+app.config.global_color_mode = 0
 # app.config.debug_depth_show = True
-app.config.debug_light_cube_show = True
+# app.config.debug_light_cube_show = True
 
 app.config.ambient_strength = 0.002
-app.config.render_back_face = True
+app.config.shadow_resolution = 4096
 
 # Set camera pos/up
 # Different methods to set dir
@@ -26,14 +25,18 @@ app.simulation.camera.look_anchor()
 # app.simulation.camera.projection.set_orthographic()
 # app.simulation.camera.projection.fovy = 45.0 * kalast.util.RPD
 
-app.simulation.sun = [0.0, 20.0, 6.0]
+app.simulation.sun = [0.0, 20.0, 0.0]
 
-mesh = kalast.mesh.Mesh(path="res/plane_crater_1024-5000_h=0.437.obj")
-# print(len(mesh.vertices))
-# print(len(mesh.facets))
+mesh = kalast.mesh.Mesh(path="res/ico4.obj", update_pos=lambda x: x * 0.3)
 mesh.flatten()
 mat = numpy.eye(4, dtype=numpy.float32)
 # mat[0:3, 3] = [2.5, 0.0, 0.0]
+app.simulation.add_body(mesh, mat=mat)
+
+mesh = kalast.mesh.Mesh(path="res/ico4.obj")
+mesh.flatten()
+mat = numpy.eye(4, dtype=numpy.float32)
+mat[0:3, 3] = [0.0, -3.0, 0.0]
 app.simulation.add_body(mesh, mat=mat)
 
 

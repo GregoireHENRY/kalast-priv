@@ -30,6 +30,9 @@ pub const SHADER_DEPTH_RENDER: wgpu::ShaderModuleDescriptor =
 pub const SHADER_LIGHT_RENDER: wgpu::ShaderModuleDescriptor =
     wgpu::include_wgsl!("../../shaders/light_render.wgsl");
 
+pub const SHADER_SHADOW: wgpu::ShaderModuleDescriptor =
+    wgpu::include_wgsl!("../../shaders/shadow.wgsl");
+
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 pub struct Pipelines {
@@ -44,7 +47,7 @@ impl RenderPipeline {
     pub fn new(
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
-        enable_back_face: bool,
+        cull_mode: Option<wgpu::Face>,
         shader: wgpu::ShaderModuleDescriptor,
         bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
         depth_stencil: bool,
@@ -63,16 +66,16 @@ impl RenderPipeline {
         //     .then(|| wgpu::PolygonMode::Line)
         //     .unwrap_or_else(|| wgpu::PolygonMode::Fill);
 
-        let cull_mode = (!enable_back_face).then(|| wgpu::Face::Back);
-
         let depth_stencil = (depth_stencil).then(|| wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled: Some(true),
             depth_compare: Some(wgpu::CompareFunction::Less),
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState {
-                constant: 2, // bilinear filtering
-                slope_scale: 2.0,
+                // constant: 2, // bilinear filtering
+                // slope_scale: 2.0,
+                constant: 0, // bilinear filtering
+                slope_scale: 0.0,
                 clamp: 0.0,
             },
         });
@@ -403,21 +406,80 @@ impl Texture {
         Self::new_image_from_bytes(device, queue, &std::fs::read(path.as_ref()).unwrap())
     }
 
-    pub fn create_depth_texture_with_comparison_sampler(
+    pub fn create_depth_texture_shadow_pass(
         device: &wgpu::Device,
         width: u32,
         height: u32,
     ) -> Self {
-        Self::create_depth_texture(
+        let mut texture = Self::create_depth_texture(
             device,
             width,
             height,
             wgpu::FilterMode::Linear,
             Some(wgpu::CompareFunction::LessEqual),
-        )
+        );
+
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+            ],
+            label: None,
+        });
+        texture.layout = Some(layout);
+
+        texture
     }
 
-    pub fn create_depth_texture_non_comparison_sampler(
+    pub fn create_depth_texture_shadow_debug(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let mut texture =
+            Self::create_depth_texture(device, width, height, wgpu::FilterMode::Nearest, None);
+
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Depth,
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                },
+            ],
+            label: None,
+        });
+        texture.layout = Some(layout);
+
+        texture
+    }
+
+    pub fn create_depth_texture_render_debug(
         device: &wgpu::Device,
         width: u32,
         height: u32,
@@ -446,7 +508,6 @@ impl Texture {
             ],
             label: None,
         });
-
         texture.layout = Some(layout);
 
         texture

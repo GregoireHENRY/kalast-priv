@@ -247,6 +247,16 @@ impl Config {
     }
 
     #[getter]
+    fn light_side(&self) -> Float {
+        self.app.borrow().config.light_side
+    }
+
+    #[setter]
+    fn set_light_side(&mut self, v: Float) {
+        self.app.borrow_mut().config.light_side = v;
+    }
+
+    #[getter]
     fn light_znear(&self) -> Float {
         self.app.borrow().config.light_znear
     }
@@ -267,16 +277,6 @@ impl Config {
     }
 
     #[getter]
-    fn light_side(&self) -> Float {
-        self.app.borrow().config.light_side
-    }
-
-    #[setter]
-    fn set_light_side(&mut self, v: Float) {
-        self.app.borrow_mut().config.light_side = v;
-    }
-
-    #[getter]
     fn ambient_strength(&self) -> Float {
         self.app.borrow().config.ambient_strength
     }
@@ -284,6 +284,56 @@ impl Config {
     #[setter]
     fn set_ambient_strength(&mut self, v: Float) {
         self.app.borrow_mut().config.ambient_strength = v;
+    }
+
+    #[getter]
+    fn shadow_resolution(&self) -> u32 {
+        self.app.borrow().config.shadow_resolution
+    }
+
+    #[setter]
+    fn set_shadow_resolution(&mut self, v: u32) {
+        self.app.borrow_mut().config.shadow_resolution = v;
+    }
+
+    #[getter]
+    fn shadow_bias_scale(&self) -> Float {
+        self.app.borrow().config.shadow_bias_scale
+    }
+
+    #[setter]
+    fn set_shadow_bias_scale(&mut self, v: Float) {
+        self.app.borrow_mut().config.shadow_bias_scale = v;
+    }
+
+    #[getter]
+    fn shadow_bias_minimum(&self) -> Float {
+        self.app.borrow().config.shadow_bias_minimum
+    }
+
+    #[setter]
+    fn set_shadow_bias_minimum(&mut self, v: Float) {
+        self.app.borrow_mut().config.shadow_bias_minimum = v;
+    }
+
+    #[getter]
+    fn shadow_normal_offset_scale(&self) -> Float {
+        self.app.borrow().config.shadow_normal_offset_scale
+    }
+
+    #[setter]
+    fn set_shadow_normal_offset_scale(&mut self, v: Float) {
+        self.app.borrow_mut().config.shadow_normal_offset_scale = v;
+    }
+
+    #[getter]
+    fn shadow_pcf(&self) -> u32 {
+        self.app.borrow().config.shadow_pcf
+    }
+
+    #[setter]
+    fn set_shadow_pcf(&mut self, v: u32) {
+        self.app.borrow_mut().config.shadow_pcf = v;
     }
 
     fn __repr__(&self) -> String {

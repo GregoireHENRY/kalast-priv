@@ -1,37 +1,22 @@
 use crate::app::gpu;
 
 pub struct Pass {
-    pub texture: gpu::Texture,
-    pub bind_group: wgpu::BindGroup,
-
     pub pipeline: gpu::RenderPipeline,
 }
 
 impl Pass {
-    pub fn new(
-        device: &wgpu::Device,
-        width: u32,
-        height: u32,
-        layouts: &[Option<&wgpu::BindGroupLayout>],
-    ) -> Self {
-        let texture =
-            gpu::Texture::create_depth_texture_with_comparison_sampler(device, width, height);
-        
-        let mut layouts = layouts.to_vec();
-        layouts.push(Some(texture.layout.as_ref().unwrap()));
-        let bind_group = texture.bind_group(device).unwrap();
-
+    pub fn new(device: &wgpu::Device, layouts: &[Option<&wgpu::BindGroupLayout>]) -> Self {
         let pipeline = gpu::RenderPipeline::new(
             &device,
             gpu::DEPTH_FORMAT,
-            false,
-            gpu::SHADER_LIGHT_RENDER,
+            None, // Some(wgpu::Face::Front),
+            gpu::SHADER_SHADOW,
             &layouts,
             true,
             false,
         );
 
-        Self { pipeline, texture, bind_group }
+        Self { pipeline }
     }
 
     // pub fn resize(&self) {}
@@ -39,13 +24,14 @@ impl Pass {
     pub fn render(
         &self,
         encoder: &mut wgpu::CommandEncoder,
+        shadow: &gpu::Texture,
         meshes: &[gpu::MeshBuffer],
         bindings: &super::Bindings,
     ) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             color_attachments: &[],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.texture.view,
+                view: &shadow.view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,
@@ -57,8 +43,7 @@ impl Pass {
 
         render_pass.set_pipeline(&self.pipeline.inner);
 
-        bindings.apply(&mut render_pass);
-        render_pass.set_bind_group(4, Some(&self.bind_group), &[]);
+        bindings.for_shadow(&mut render_pass);
 
         for mesh in &meshes[1..] {
             mesh.render(&mut render_pass);

@@ -4,10 +4,12 @@ pub mod render;
 pub mod shadow;
 
 pub struct Passes {
-    pub render: render::Pass,
-    pub depth: depth::Pass,
-    pub light_cube: light_cube::Pass,
     pub shadow: shadow::Pass,
+
+    pub render: render::Pass,
+    pub light_cube: light_cube::Pass,
+
+    pub depth: depth::Pass,
 
     pub bindings: Bindings,
 }
@@ -17,14 +19,18 @@ impl Passes {
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
         config: &crate::app::config::Config,
-        layouts: &[Option<&wgpu::BindGroupLayout>],
-        bindings: Bindings,
+        uniforms: &super::uniform::Uniforms,
     ) -> Self {
+        let layouts_all = uniforms.layouts_all();
+        let bindings = uniforms.bindings(device);
+
         Self {
-            render: render::Pass::new(device, format, config, layouts),
+            shadow: shadow::Pass::new(device, &uniforms.layouts_for_shadow()),
+
+            render: render::Pass::new(device, format, config, &layouts_all),
+            light_cube: light_cube::Pass::new(device, format, &layouts_all),
+
             depth: depth::Pass::new(device, config.width, config.height, format),
-            light_cube: light_cube::Pass::new(device, format, config, layouts),
-            shadow: shadow::Pass::new(device, config.width, config.height, layouts),
 
             bindings,
         }
@@ -32,19 +38,19 @@ impl Passes {
 
     pub fn render(
         &mut self,
-        view: &wgpu::TextureView,
         encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        shadow: &super::gpu::Texture,
         meshes: &[super::gpu::MeshBuffer],
         config: &crate::app::config::Config,
     ) {
-        self.shadow.render(encoder, meshes, &self.bindings);
+        self.shadow.render(encoder, shadow, meshes, &self.bindings);
 
         self.render.render(
             view,
             encoder,
             &self.depth.texture.view,
             &mut self.light_cube,
-            &mut self.shadow,
             meshes,
             &self.bindings,
             config,
@@ -59,16 +65,19 @@ impl Passes {
 #[derive(Debug, Clone)]
 pub struct Bindings {
     pub globals: wgpu::BindGroup,
-    pub camera: wgpu::BindGroup,
-    pub light: wgpu::BindGroup,
-    pub texture: wgpu::BindGroup,
+    pub view: wgpu::BindGroup,
+    pub shadow: wgpu::BindGroup,
 }
 
 impl Bindings {
-    pub fn apply(&self, render_pass: &mut wgpu::RenderPass) {
+    pub fn all(&self, render_pass: &mut wgpu::RenderPass) {
         render_pass.set_bind_group(0, Some(&self.globals), &[]);
-        render_pass.set_bind_group(1, Some(&self.camera), &[]);
-        render_pass.set_bind_group(2, Some(&self.light), &[]);
-        render_pass.set_bind_group(3, Some(&self.texture), &[]);
+        render_pass.set_bind_group(1, Some(&self.view), &[]);
+        render_pass.set_bind_group(2, Some(&self.shadow), &[]);
+    }
+
+    pub fn for_shadow(&self, render_pass: &mut wgpu::RenderPass) {
+        render_pass.set_bind_group(0, Some(&self.globals), &[]);
+        render_pass.set_bind_group(1, Some(&self.view), &[]);
     }
 }

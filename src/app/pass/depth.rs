@@ -49,15 +49,14 @@ impl Pass {
             false,
         );
 
-        let texture =
-            gpu::Texture::create_depth_texture_non_comparison_sampler(device, width, height);
+        let texture = gpu::Texture::create_depth_texture_render_debug(device, width, height);
         let layouts = &[Some(texture.layout.as_ref().unwrap())];
         let bind_group = texture.bind_group(device).unwrap();
 
         let pipeline = gpu::RenderPipeline::new(
             &device,
             format,
-            false,
+            None,
             gpu::SHADER_DEPTH_RENDER,
             layouts,
             false,
@@ -75,8 +74,7 @@ impl Pass {
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
-        self.texture =
-            gpu::Texture::create_depth_texture_non_comparison_sampler(device, width, height);
+        self.texture = gpu::Texture::create_depth_texture_render_debug(device, width, height);
         self.bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: self.texture.layout.as_ref().unwrap(),
             entries: &[

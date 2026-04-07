@@ -29,11 +29,17 @@ pub struct Config {
     pub light_color: wgpu::Color,
     pub light_target: Vec3,
     pub light_up: Vec3,
+    pub light_side: Float,
     pub light_znear: Float,
     pub light_zfar: Float,
-    pub light_side: Float,
 
     pub ambient_strength: f32,
+
+    pub shadow_resolution: u32,
+    pub shadow_pcf: u32,
+    pub shadow_normal_offset_scale: f32,
+    pub shadow_bias_scale: f32,
+    pub shadow_bias_minimum: f32,
 }
 
 impl Default for Config {
@@ -66,11 +72,17 @@ impl Default for Config {
             light_color: wgpu::Color::WHITE,
             light_target: Vec3::new(0.0, 0.0, 0.0),
             light_up: Vec3::new(0.0, 0.0, 1.0),
+            light_side: 10.0,
             light_znear: 0.1,
             light_zfar: 100.0,
-            light_side: 10.0,
 
-            ambient_strength: 0.0,
+            ambient_strength: 0.005,
+
+            shadow_resolution: 8192,
+            shadow_pcf: 0,
+            shadow_normal_offset_scale: 2e-4,
+            shadow_bias_scale: 1e-5,
+            shadow_bias_minimum: 1e-5,
         }
     }
 }

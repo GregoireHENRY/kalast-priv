@@ -8,13 +8,12 @@ impl Pass {
     pub fn new(
         device: &wgpu::Device,
         format: wgpu::TextureFormat,
-        config: &crate::app::config::Config,
         layouts: &[Option<&wgpu::BindGroupLayout>],
     ) -> Self {
         let pipeline = gpu::RenderPipeline::new(
             &device,
             format,
-            config.render_back_face,
+            None,
             gpu::SHADER_LIGHT_RENDER,
             layouts,
             true,
@@ -36,7 +35,7 @@ impl Pass {
         // We re-use RenderPass of main rendering.
         render_pass.set_pipeline(&self.pipeline.inner);
 
-        bindings.apply(render_pass);
+        bindings.all(render_pass);
 
         mesh.render(render_pass);
     }

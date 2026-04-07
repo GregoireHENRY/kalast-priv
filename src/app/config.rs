@@ -76,7 +76,7 @@ impl Default for Config {
             light_znear: 0.1,
             light_zfar: 100.0,
 
-            ambient_strength: 0.005,
+            ambient_strength: 0.002,
 
             shadow_resolution: 8192,
             shadow_pcf: 0,

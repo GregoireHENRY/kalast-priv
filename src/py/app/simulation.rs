@@ -73,6 +73,17 @@ impl Simulation {
             });
     }
 
+    fn get_matrix_model<'py>(
+        slf: pyo3::Bound<'py, Self>,
+        index: usize,
+    ) -> Bound<'py, numpy::PyArray2<Float>> {
+        let inner = &slf.borrow().inner;
+        let body = &inner.borrow().bodies[index];
+        let slice = body.borrow().instance.mat;
+        let arr = ndarray::ArrayView2::from(slice.as_ref());
+        unsafe { numpy::PyArray2::borrow_from_array(&arr, slf.into_any()) }
+    }
+
     fn update(&mut self) {
         self.inner.borrow_mut().update();
     }

@@ -301,6 +301,17 @@ impl Window {
             0,
             bytemuck::bytes_of(&self.uniforms.view.uniform),
         );
+
+        for ii in 0..simulation.bodies.len() {
+            self.meshes[ii]
+                .update_instance_buffer(&self.device, &simulation.bodies[ii].borrow().instance);
+        }
+
+        // self.queue.write_buffer(
+        //     &self.uniforms.view.buffer,
+        //     0,
+        //     bytemuck::bytes_of(&self.uniforms.view.uniform),
+        // );
     }
 
     pub fn render(&mut self, config: &crate::app::config::Config) {

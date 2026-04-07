@@ -291,6 +291,14 @@ impl MeshBuffer {
     //     (self.index_buffer.size() / 4) as _
     // }
 
+    pub fn update_instance_buffer(&mut self, device: &wgpu::Device, instance: &InstanceInput) {
+        self.instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            contents: bytemuck::bytes_of(instance),
+            usage: wgpu::BufferUsages::VERTEX,
+            label: None,
+        });
+    }
+
     pub fn render(&self, pass: &mut wgpu::RenderPass) {
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         pass.set_vertex_buffer(1, self.instance_buffer.slice(..));

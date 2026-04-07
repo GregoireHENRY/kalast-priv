@@ -7,7 +7,7 @@ import kalast
 
 app = kalast.app.App()
 
-app.config.global_color_mode = 0
+app.config.global_color_mode = 3
 
 app.config.debug_light_cube_show = True
 
@@ -35,7 +35,7 @@ app.simulation.sun = [0.0, 20.0, 0.0]
 
 # Set camera pos/up
 # Different methods to set dir
-app.simulation.camera.pos = [0.0, 10.0, 0.0]
+app.simulation.camera.pos = [0.0, 30.0, 0.0]
 app.simulation.camera.up = [0.0, 0.0, 1.0]
 app.simulation.camera.look_anchor()
 
@@ -43,6 +43,7 @@ mesh = kalast.mesh.Mesh(path="res/ico3.obj")
 # print(f"vertices: {len(mesh.vertices)}")
 # print(f"facets: {len(mesh.facets)}")
 mesh.flatten()
+
 mat = numpy.eye(4, dtype=numpy.float32)
 mat[:3, :3] *= numpy.eye(3) * 0.2
 mat[0:3, 3] = [0.0, 5.0, 0.0]
@@ -51,15 +52,14 @@ app.simulation.add_body(mesh, mat=mat)
 mat = numpy.eye(4, dtype=numpy.float32)
 app.simulation.add_body(mesh, mat=mat)
 
-
 mat = kalast.util.mat_axis_angle(numpy.array([0.0, 0.0, 1.0]), 0.01)
 
 
 def tick(sim):
-    
-    p0 = sim.get_matrix_model(0)[0:3, 3]
-    p1 = sim.get_matrix_model(1)[0:3, 3]
-    print(f"#{sim.state.iteration} {p0} {p1}")
+
+    # p0 = sim.get_matrix_model(0)[0:3, 3]
+    # p1 = sim.get_matrix_model(1)[0:3, 3]
+    # print(f"#{sim.state.iteration} {p0} {p1}")
     
 
     pass

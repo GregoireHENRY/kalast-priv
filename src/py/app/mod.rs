@@ -8,6 +8,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use pyo3::prelude::*;
 
+use crate::{Mat4, Vec3};
+
 #[pyclass(unsendable)]
 pub struct App {
     pub inner: Rc<RefCell<crate::app::App>>,
@@ -17,6 +19,9 @@ pub struct App {
 impl App {
     #[new]
     fn new() -> Self {
+        let m = Mat4::from_axis_angle(Vec3::Z, 0.01);
+        println!("{}", m);
+        
         Self {
             inner: Rc::new(RefCell::new(crate::app::App::new())),
         }
@@ -30,9 +35,9 @@ impl App {
     }
 
     #[getter]
-    fn simulation(&self) -> simulation::Simulation {
+    fn get_simulation(&mut self) -> simulation::Simulation {
         simulation::Simulation {
-            app: self.inner.clone(),
+            inner: self.inner.borrow_mut().simulation.clone(),
         }
     }
 
@@ -42,14 +47,9 @@ impl App {
 
     #[setter]
     fn set_tick(&mut self, callback: Py<PyAny>) {
-        // Python::attach(|py| {
-        // let simulation = Py::new(py, self.simulation()).unwrap();
-
-        //});
-
         self.inner.borrow_mut().tick = Some(crate::app::Tick::Python {
             callback,
-            simulation: self.simulation(),
+            simulation: self.get_simulation(),
         });
     }
 }

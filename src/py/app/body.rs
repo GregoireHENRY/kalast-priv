@@ -1,51 +1,31 @@
 use std::{cell::RefCell, rc::Rc};
 
+use numpy::PyArrayMethods;
 use pyo3::prelude::*;
+
+use crate::{Float, Mat4};
 
 #[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Body {
-    pub inner: Rc<RefCell<crate::app::body::Body>>,
+    pub simulation: Rc<RefCell<crate::app::simulation::Simulation>>,
+    pub index: usize,
 }
 
 #[pymethods]
 impl Body {
-    /*
-    #[new]
-    #[pyo3(signature = (
-        mesh=None,
-        instance=None,
-        entity=None,
-    ))]
-    pub fn new(
-        mesh: Option<crate::py::mesh::Mesh>,
-        instance: Option<super::gpu::InstanceInput>,
-        entity: Option<crate::py::entity::Body>,
-    ) -> Self {
-        let mut body = crate::app::body::Body::new();
-
-        if let Some(mesh) = mesh {
-            body.mesh = Some(mesh.inner.clone());
-        }
-
-        if let Some(instance) = instance {
-            body.instance = instance.inner.borrow().clone();
-        };
-
-        if let Some(entity) = entity {
-            body.entity = Some(entity.inner.borrow().clone());
-        }
-
-        Self {
-            inner: Rc::new(RefCell::new(body)),
-        }
-    }
-
     #[getter]
-    fn instance(&self) -> super::gpu::InstanceInput {
-        super::gpu::InstanceInput {
-            inner: Rc::new(RefCell::new(self.inner.borrow().instance)),
-        }
+    fn mat<'py>(slf: pyo3::Bound<'py, Self>) -> PyResult<Bound<'py, numpy::PyArray2<Float>>> {
+        let self_ = slf.borrow();
+        let m = &self_.simulation.borrow().bodies[self_.index].mat;
+        let arr = ndarray::ArrayView1::from(m.as_ref())
+            .into_shape_with_order((4, 4))
+            .unwrap();
+        unsafe { numpy::PyArray2::borrow_from_array(&arr, slf.into_any()).transpose() }
     }
-    */
+
+    #[setter]
+    fn set_mat(&mut self, m: [[Float; 4]; 4]) {
+        self.simulation.borrow_mut().bodies[self.index].mat = Mat4::from_cols_array_2d(&m).transpose();
+    }
 }

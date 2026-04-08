@@ -1,16 +1,8 @@
-#[derive(Debug)]
+use crate::Mat4;
+
+#[derive(Debug, Clone, Default)]
 pub struct Body {
     pub mesh: Option<crate::mesh::Mesh>,
-    pub instance: super::gpu::InstanceInput,
+    pub mat: Mat4,
     pub entity: Option<crate::entity::Body>,
-}
-
-impl Body {
-    pub fn new() -> Self {
-        Self {
-            mesh: None,
-            instance: super::gpu::InstanceInput::default(),
-            entity: None,
-        }
-    }
 }

@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use glam::Mat4;
 use pyo3::prelude::*;
 
 use crate::Float;
@@ -7,16 +8,15 @@ use crate::Float;
 #[pyclass(from_py_object, unsendable)]
 #[derive(Clone)]
 pub struct Simulation {
-    pub app: Rc<RefCell<crate::app::App>>,
+    pub inner: Rc<RefCell<crate::app::simulation::Simulation>>,
 }
 
 #[pymethods]
 impl Simulation {
-    /*
     #[getter]
     fn state(&self) -> State {
         State {
-            app: self.inner.clone(),
+            simulation: self.inner.clone(),
         }
     }
 
@@ -26,32 +26,65 @@ impl Simulation {
             simulation: self.inner.clone(),
         }
     }
-    */
 
-    #[getter]
-    fn sun<'py>(slf: pyo3::Bound<'py, Self>) -> pyo3::Bound<'py, numpy::PyArray1<Float>> {
-        let app = &slf.borrow().app;
-        let v = &app.borrow().simulation.sun;
-        let arr = ndarray::ArrayView1::from(v.as_ref());
-        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
-    }
-
-    #[setter]
-    fn set_sun(&self, v: [Float; 3]) {
-        self.app.borrow_mut().simulation.sun = v.into();
-    }
-
-    /*
     #[getter]
     fn bodies(&mut self) -> Vec<super::body::Body> {
         self.inner
             .borrow()
             .bodies
             .iter()
-            .map(|b| super::body::Body { inner: b.clone() })
+            .enumerate()
+            .map(|(index, _)| super::body::Body {
+                simulation: self.inner.clone(),
+                index,
+            })
             .collect()
     }
 
+    #[pyo3(signature = (
+        path,
+        mat=None,
+        flatten=None,
+    ))]
+    fn load_mesh(&mut self, path: &str, mat: Option<[[Float; 4]; 4]>, flatten: Option<bool>) {
+        self.inner.borrow_mut().load_mesh(
+            path,
+            mat.map(|m| Mat4::from_cols_array_2d(&m).transpose())
+                .unwrap_or(Mat4::IDENTITY),
+            flatten.unwrap_or(false),
+        );
+    }
+
+    // This function in Python has to clone the mesh to transfer it to Simulation.
+    // The rust equivalent transfer ownership without clone.
+    // This is to avoid spreading Rc<RefCell<Mesh>>.
+    // Can look for an upgrade later.
+    #[pyo3(signature = (
+        mesh,
+        mat=None,
+    ))]
+    fn add_mesh(&mut self, mesh: crate::py::mesh::Mesh, mat: Option<[[Float; 4]; 4]>) {
+        self.inner.borrow_mut().add_mesh(
+            mesh.inner.borrow().clone(),
+            mat.map(|m| Mat4::from_cols_array_2d(&m).transpose())
+                .unwrap_or(Mat4::IDENTITY),
+        );
+    }
+
+    #[getter]
+    fn sun<'py>(slf: pyo3::Bound<'py, Self>) -> pyo3::Bound<'py, numpy::PyArray1<Float>> {
+        let inner = &slf.borrow().inner;
+        let v = &inner.borrow().sun;
+        let arr = ndarray::ArrayView1::from(v.as_ref());
+        unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
+    }
+
+    #[setter]
+    fn set_sun(&self, v: [Float; 3]) {
+        self.inner.borrow_mut().sun = v.into();
+    }
+
+    /*
     #[pyo3(signature = (
         mesh=None,
         instance=None,
@@ -99,11 +132,11 @@ impl Simulation {
     */
 
     fn update(&mut self) {
-        self.app.borrow_mut().simulation.update();
+        self.inner.borrow_mut().update();
     }
 
     fn __repr__(&self) -> String {
-        format!("{:?}", self.app.borrow().simulation)
+        format!("{:?}", self.inner.borrow())
     }
 }
 

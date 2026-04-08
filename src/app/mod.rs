@@ -8,7 +8,7 @@ pub mod uniform;
 pub mod window;
 
 use pyo3::prelude::*;
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use crate::Float;
 
@@ -19,7 +19,7 @@ pub struct App {
     pub now: std::time::Instant,
     pub dt: Float,
 
-    pub simulation: crate::app::simulation::Simulation,
+    pub simulation: Rc<RefCell<crate::app::simulation::Simulation>>,
     pub tick: Option<Tick>,
 
     pub controller: camera::Controller,
@@ -45,7 +45,7 @@ impl App {
             now: std::time::Instant::now(),
             dt: 0.0,
 
-            simulation: crate::app::simulation::Simulation::new(),
+            simulation: Rc::new(RefCell::new(crate::app::simulation::Simulation::new())),
             tick: None,
 
             controller,
@@ -79,7 +79,7 @@ impl App {
     pub fn exit(&self, ev: &winit::event_loop::ActiveEventLoop) {
         let win = self.window.as_ref().unwrap();
 
-        if self.simulation.camera.control == camera::Control::WASD {
+        if self.simulation.borrow().camera.control == camera::Control::WASD {
             win.reset_cursor();
         }
 
@@ -100,7 +100,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
             ev.owned_display_handle(),
             win.clone(),
             &self.config,
-            &self.simulation,
+            &self.simulation.borrow(),
         )));
     }
 
@@ -123,7 +123,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                 match &self.tick {
                     Some(Tick::Rust(f)) => {
-                        f(&mut self.simulation);
+                        f(&mut self.simulation.borrow_mut());
                     }
                     Some(Tick::Python {
                         callback,
@@ -138,15 +138,16 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                 {
                     self.simulation
+                        .borrow_mut()
                         .camera
                         .update_with_controller(&mut self.controller, self.dt);
 
-                    self.simulation.update();
+                    self.simulation.borrow_mut().update();
                 }
 
                 {
                     let win = self.window.as_mut().unwrap();
-                    win.update(&mut self.simulation);
+                    win.update(&mut self.simulation.borrow_mut());
                     win.render(&self.config);
                 }
 
@@ -176,8 +177,8 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                     (winit::keyboard::KeyCode::KeyT, true) => {
                         // switch camera type
-                        self.simulation.camera.toggle_control();
-                        let control = self.simulation.camera.control;
+                        self.simulation.borrow_mut().camera.toggle_control();
+                        let control = self.simulation.borrow().camera.control;
                         if self.config.debug_app {
                             println!("[APP] Camera control changed, now is {:?}", control);
                         }
@@ -208,7 +209,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
             }
 
             winit::event::WindowEvent::PinchGesture { delta, .. } => {
-                if self.simulation.camera.control == camera::Control::Arcball {
+                if self.simulation.borrow().camera.control == camera::Control::Arcball {
                     self.controller.zoom(delta as Float);
                 }
             }
@@ -231,7 +232,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
     ) {
         match ev {
             winit::event::DeviceEvent::MouseMotion { delta: (dx, dy) } => {
-                if self.simulation.camera.control == camera::Control::WASD {
+                if self.simulation.borrow().camera.control == camera::Control::WASD {
                     self.controller.mouse_motion(dx as Float, dy as Float);
                 }
             }
@@ -247,7 +248,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
                     }) => (x as Float, y as Float),
                 };
 
-                if self.simulation.camera.control == camera::Control::Arcball {
+                if self.simulation.borrow().camera.control == camera::Control::Arcball {
                     self.controller.mouse_motion(-dx, -dy);
                 }
             }

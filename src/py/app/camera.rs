@@ -15,8 +15,8 @@ impl Camera {
     #[getter]
     fn pos<'py>(slf: pyo3::Bound<'py, Self>) -> pyo3::Bound<'py, numpy::PyArray1<Float>> {
         let simulation = &slf.borrow().simulation;
-        let slice = &simulation.borrow().camera.pos;
-        let arr = ndarray::ArrayView1::from(slice.as_ref());
+        let v = &simulation.borrow().camera.pos;
+        let arr = ndarray::ArrayView1::from(v.as_ref());
         unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
     }
 

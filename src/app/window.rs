@@ -129,17 +129,16 @@ impl Window {
                         println!("v: {}", v.pos);
                     }
                     println!("indices: {:?}", &mesh.indices);
-                    println!("mat: {:?}", body.instance.mat);
-                    // println!("normal: {:?}", body.instance.normal);
-                    // println!("color: {}", body.instance.color);
-                    // println!("color mode: {}", body.instance.color_mode);
+                    println!("mat: {:?}", body.mat);
                 }
+
+                let instance = super::gpu::InstanceInput::new(body.mat);
 
                 meshes.push(super::gpu::MeshBuffer::new(
                     &device,
                     &mesh.vertices,
                     &mesh.indices,
-                    &body.instance,
+                    &instance,
                     mesh.is_flat(),
                 ));
             }
@@ -296,10 +295,11 @@ impl Window {
             bytemuck::bytes_of(&self.uniforms.view.uniform),
         );
 
-        // for ii in 0..simulation.bodies.len() {
-        //     self.meshes[ii]
-        //         .update_instance_buffer(&self.device, &simulation.bodies[ii].borrow().instance);
-        // }
+        // skip light cube
+        for ii in 0..simulation.bodies.len() {
+            let instance = super::gpu::InstanceInput::new(simulation.bodies[ii].mat);
+            self.meshes[1 + ii].update_instance_buffer(&self.device, &instance);
+        }
 
         // self.queue.write_buffer(
         //     &self.uniforms.view.buffer,

@@ -225,6 +225,15 @@ impl Default for InstanceInput {
 }
 
 impl InstanceInput {
+    pub fn new(mat: Mat4) -> Self {
+        let mut instance = Self {
+            mat,
+            ..Default::default()
+        };
+        instance.compute_normal();
+        instance
+    }
+
     pub fn compute_normal(&mut self) {
         self.normal = self.mat.inverse().transpose();
     }

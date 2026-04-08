@@ -1,4 +1,4 @@
-use crate::Vec3;
+use crate::{Mat4, Vec3};
 
 #[derive(Debug)]
 pub struct Simulation {
@@ -16,6 +16,31 @@ impl Simulation {
             camera: crate::app::camera::Camera::new(),
             sun: Vec3::new(-100.0, 0.0, 0.0),
         }
+    }
+
+    pub fn load_mesh<P>(&mut self, path: P, mat: Mat4, flatten: bool)
+    where
+        P: AsRef<std::path::Path>,
+    {
+        let mut mesh = crate::mesh::Mesh::load(path, |x| x);
+
+        if flatten {
+            mesh.flatten();
+        }
+
+        self.bodies.push(super::body::Body {
+            mesh: Some(mesh),
+            mat,
+            ..Default::default()
+        });
+    }
+
+    pub fn add_mesh(&mut self, mesh: crate::mesh::Mesh, mat: Mat4) {
+        self.bodies.push(super::body::Body {
+            mesh: Some(mesh),
+            mat,
+            ..Default::default()
+        });
     }
 
     pub fn update(&mut self) {

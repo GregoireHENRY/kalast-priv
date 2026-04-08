@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# tested with f32 tobj reader
+
+
 import numpy
 
 import kalast
@@ -139,7 +142,7 @@ assert r is None
 p = numpy.array([1.0, 0.0, 1.0])
 u = numpy.array([-1.0, 0.0, -1.0])
 r = mesh.intersect(p, u)
-assert r[0] == 1542
+assert r[0] == 1510
 assert numpy.all((r[1] - numpy.array([-0.30834365, 0.0, -0.30834365])) < 1e-8)
 
 # so yeah, it's not exactly the same but really almost, i guess it's f32 float precision issue here
@@ -159,14 +162,14 @@ p = numpy.array([0.0, 0.0, -10.0])
 u = numpy.array([0.0, 0.0, 1.0])
 r = mesh.intersect(p, u)
 assert r[0] == 496
-assert numpy.all((r[1] - numpy.array([-0.0, 0.0, -0.437])) < 1e-8)
+assert numpy.all((r[1] - numpy.array([-0.0, 0.0, -0.437])) < 1e-6)
 assert not kalast.mesh.is_facing_plane(u, n)
 
 # trying to intercept from under crater but directed on X/Y plane to the side
 p = numpy.array([1.0, 0.0, -0.1])
 u = numpy.array([-1.0, 0.0, 0.0])
 r = mesh.intersect(p, u)
-assert r[0] == 509
+assert r[0] == 541
 assert numpy.all((r[1] - numpy.array([0.4181, 0.0, -0.1])) < 1e-8)
 
 # same but at 0.4 -Z

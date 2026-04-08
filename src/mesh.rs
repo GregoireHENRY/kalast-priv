@@ -4,7 +4,13 @@ use pyo3::prelude::*;
 use crate::{Float, Mat4, Vec2, Vec3};
 
 // std::mem::size_of::<Vertex>() / 8 = 18
+#[cfg(feature = "use_f64")]
 pub const VERTEX_STRIDE: usize = 18;
+
+// std::mem::size_of::<Vertex>() / 4 = 19
+#[cfg(not(feature = "use_f64"))]
+pub const VERTEX_STRIDE: usize = 19;
+
 pub const POS_OFFSET: usize = 0;
 pub const TEX_OFFSET: usize = 3;
 pub const NORMAL_OFFSET: usize = 5;
@@ -12,6 +18,7 @@ pub const TANGENT_OFFSET: usize = 8;
 pub const BITANGENT_OFFSET: usize = 11;
 pub const COLOR_OFFSET: usize = 14;
 pub const COLOR_MODE_OFFSET: usize = 17;
+// pub const EXTRA_OFFSET: usize = 17.5;
 
 pub const MESH_CUBE: &'static str = include_str!("../res/cube.obj");
 

@@ -402,38 +402,47 @@ impl Mesh {
     }
 
     #[getter]
-    fn positions(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn positions(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
+        // println!("{}", std::mem::size_of::<crate::mesh::Vertex>());
         vertex_matrix_array(slf, crate::mesh::POS_OFFSET, 3)
     }
 
     #[getter]
-    fn textures(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn textures(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
         vertex_matrix_array(slf, crate::mesh::TEX_OFFSET, 2)
     }
 
     #[getter]
-    fn normals(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn normals(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
         vertex_matrix_array(slf, crate::mesh::NORMAL_OFFSET, 3)
     }
 
     #[getter]
-    fn tangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn tangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
         vertex_matrix_array(slf, crate::mesh::TANGENT_OFFSET, 3)
     }
 
     #[getter]
-    fn bitangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn bitangents(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
         vertex_matrix_array(slf, crate::mesh::BITANGENT_OFFSET, 3)
     }
 
     #[getter]
-    fn colors(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<f64>> {
+    fn colors(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray2<Float>> {
         vertex_matrix_array(slf, crate::mesh::COLOR_OFFSET, 3)
     }
 
     #[getter]
     fn color_modes(slf: Bound<'_, Self>) -> Bound<'_, numpy::PyArray1<u32>> {
-        let start = crate::mesh::COLOR_MODE_OFFSET * 2;
+        let start = crate::mesh::COLOR_MODE_OFFSET;
+        let stride = crate::mesh::VERTEX_STRIDE;
+
+        #[cfg(feature = "use_f64")]
+        let start = start * 2;
+
+        #[cfg(feature = "use_f64")]
+        let stride = stride * 2;
+
         let size = 1;
 
         let mesh = slf.borrow();
@@ -441,7 +450,7 @@ impl Mesh {
 
         let slice: &[u32] = bytemuck::cast_slice(&mesh.vertices);
         let arr = ndarray::ArrayView1::from(slice)
-            .into_shape_with_order((mesh.vertices.len(), crate::mesh::VERTEX_STRIDE * 2))
+            .into_shape_with_order((mesh.vertices.len(), stride))
             .unwrap();
 
         let arr = arr.slice(ndarray::s![.., start..start + size]);
@@ -480,9 +489,9 @@ impl Mesh {
         slf: Bound<'_, Self>,
         facet: isize,
     ) -> (
-        Bound<'_, numpy::PyArray1<f64>>,
-        Bound<'_, numpy::PyArray1<f64>>,
-        Bound<'_, numpy::PyArray1<f64>>,
+        Bound<'_, numpy::PyArray1<Float>>,
+        Bound<'_, numpy::PyArray1<Float>>,
+        Bound<'_, numpy::PyArray1<Float>>,
     ) {
         let n = slf.borrow().inner.borrow().facets.len();
         let facet = super::util::isize_to_usize(facet, n).unwrap();
@@ -493,9 +502,9 @@ impl Mesh {
         slf: Bound<'_, Self>,
         facet: isize,
     ) -> (
-        Bound<'_, numpy::PyArray1<f64>>,
-        Bound<'_, numpy::PyArray1<f64>>,
-        Bound<'_, numpy::PyArray1<f64>>,
+        Bound<'_, numpy::PyArray1<Float>>,
+        Bound<'_, numpy::PyArray1<Float>>,
+        Bound<'_, numpy::PyArray1<Float>>,
     ) {
         let n = slf.borrow().inner.borrow().facets.len();
         let facet = super::util::isize_to_usize(facet, n).unwrap();
@@ -571,8 +580,10 @@ impl FacetVerticesView {
     }
 }
 
-fn vertex_matrix<'a>(mesh: &'a crate::mesh::Mesh) -> ndarray::ArrayView2<'a, f64> {
-    let slice: &[f64] = bytemuck::cast_slice(&mesh.vertices);
+fn vertex_matrix<'a>(mesh: &'a crate::mesh::Mesh) -> ndarray::ArrayView2<'a, Float> {
+    let slice: &[Float] = bytemuck::cast_slice(&mesh.vertices);
+    // println!("{}", slice.len());
+    // println!("{} {}", mesh.vertices.len(), mesh.facets.len());
 
     ndarray::ArrayView1::from(slice)
         .into_shape_with_order((mesh.vertices.len(), crate::mesh::VERTEX_STRIDE))
@@ -583,7 +594,7 @@ fn vertex_matrix_array<'a>(
     slf: Bound<'_, Mesh>,
     start: usize,
     size: usize,
-) -> Bound<'_, numpy::PyArray2<f64>> {
+) -> Bound<'_, numpy::PyArray2<Float>> {
     let mesh = slf.borrow();
     let mesh = mesh.inner.borrow();
     let arr = vertex_matrix(&mesh);
@@ -597,9 +608,9 @@ fn facets_matrix_array<'a>(
     size: usize,
     facet: usize,
 ) -> (
-    Bound<'_, numpy::PyArray1<f64>>,
-    Bound<'_, numpy::PyArray1<f64>>,
-    Bound<'_, numpy::PyArray1<f64>>,
+    Bound<'_, numpy::PyArray1<Float>>,
+    Bound<'_, numpy::PyArray1<Float>>,
+    Bound<'_, numpy::PyArray1<Float>>,
 ) {
     let mesh = slf.borrow();
     let mesh = mesh.inner.borrow();
@@ -629,116 +640,90 @@ pub fn load_image(path: &str) -> ((u32, u32), Vec<u8>) {
 #[pyfunction]
 pub fn normal_facet<'py>(
     py: Python<'py>,
-    ab: numpy::PyReadonlyArray1<'py, Float>,
-    ac: numpy::PyReadonlyArray1<'py, Float>,
+    ab: [Float; 3],
+    ac: [Float; 3],
 ) -> Bound<'py, numpy::PyArray1<Float>> {
-    crate::mesh::normal_facet(
-        &Vec3::from_slice(ab.as_slice().unwrap()),
-        &Vec3::from_slice(ac.as_slice().unwrap()),
-    )
-    .to_array()
-    .to_pyarray(py)
+    crate::mesh::normal_facet(&Vec3::from_slice(&ab), &Vec3::from_slice(&ac))
+        .to_array()
+        .to_pyarray(py)
 }
 
 #[pyfunction]
-pub fn area_facet(
-    ab: numpy::PyReadonlyArray1<'_, Float>,
-    ac: numpy::PyReadonlyArray1<'_, Float>,
-) -> PyResult<Float> {
-    Ok(crate::mesh::area_facet(
-        &Vec3::from_slice(ab.as_slice().unwrap()),
-        &Vec3::from_slice(ac.as_slice().unwrap()),
-    ) as _)
+pub fn area_facet(ab: [Float; 3], ac: [Float; 3]) -> PyResult<Float> {
+    Ok(crate::mesh::area_facet(&Vec3::from_slice(&ab), &Vec3::from_slice(&ac)) as _)
 }
 
 #[pyfunction]
 pub fn is_point_in_or_on(
-    p1: numpy::PyReadonlyArray1<'_, Float>,
-    p2: numpy::PyReadonlyArray1<'_, Float>,
-    a: numpy::PyReadonlyArray1<'_, Float>,
-    b: numpy::PyReadonlyArray1<'_, Float>,
+    p1: [Float; 3],
+    p2: [Float; 3],
+    a: [Float; 3],
+    b: [Float; 3],
 ) -> PyResult<bool> {
     Ok(crate::mesh::is_point_in_or_on(
-        &Vec3::from_slice(p1.as_slice().unwrap()),
-        &Vec3::from_slice(p2.as_slice().unwrap()),
-        &Vec3::from_slice(a.as_slice().unwrap()),
-        &Vec3::from_slice(b.as_slice().unwrap()),
+        &p1.into(),
+        &p2.into(),
+        &a.into(),
+        &b.into(),
     ))
 }
 
 #[pyfunction]
 pub fn is_point_in_or_on_triangle(
-    p: numpy::PyReadonlyArray1<'_, Float>,
-    a: numpy::PyReadonlyArray1<'_, Float>,
-    b: numpy::PyReadonlyArray1<'_, Float>,
-    c: numpy::PyReadonlyArray1<'_, Float>,
+    p: [Float; 3],
+    a: [Float; 3],
+    b: [Float; 3],
+    c: [Float; 3],
 ) -> PyResult<bool> {
     Ok(crate::mesh::is_point_in_or_on_triangle(
-        &Vec3::from_slice(p.as_slice().unwrap()),
-        &Vec3::from_slice(a.as_slice().unwrap()),
-        &Vec3::from_slice(b.as_slice().unwrap()),
-        &Vec3::from_slice(c.as_slice().unwrap()),
+        &p.into(),
+        &a.into(),
+        &b.into(),
+        &c.into(),
     ))
 }
 
 #[pyfunction]
-pub fn is_facing_plane<'py>(
-    u: numpy::PyReadonlyArray1<'_, Float>,
-    n: numpy::PyReadonlyArray1<'_, Float>,
-) -> PyResult<bool> {
-    Ok(crate::mesh::is_facing_plane(
-        &Vec3::from_slice(u.as_slice().unwrap()),
-        &Vec3::from_slice(n.as_slice().unwrap()),
-    ))
+pub fn is_facing_plane<'py>(u: [Float; 3], n: [Float; 3]) -> PyResult<bool> {
+    Ok(crate::mesh::is_facing_plane(&u.into(), &n.into()))
 }
 
 #[pyfunction]
-pub fn is_not_parallel_to_plane<'py>(
-    u: numpy::PyReadonlyArray1<'_, Float>,
-    n: numpy::PyReadonlyArray1<'_, Float>,
-) -> PyResult<bool> {
-    Ok(crate::mesh::is_not_parallel_to_plane(
-        &Vec3::from_slice(u.as_slice().unwrap()),
-        &Vec3::from_slice(n.as_slice().unwrap()),
-    ))
+pub fn is_not_parallel_to_plane<'py>(u: [Float; 3], n: [Float; 3]) -> PyResult<bool> {
+    Ok(crate::mesh::is_not_parallel_to_plane(&u.into(), &n.into()))
 }
 
 #[pyfunction]
 #[pyo3(signature = (p, u, a, n))]
 pub fn intersect_plane<'py>(
     py: Python<'py>,
-    p: numpy::PyReadonlyArray1<'_, Float>,
-    u: numpy::PyReadonlyArray1<'_, Float>,
-    a: numpy::PyReadonlyArray1<'_, Float>,
-    n: numpy::PyReadonlyArray1<'_, Float>,
+    p: [Float; 3],
+    u: [Float; 3],
+    a: [Float; 3],
+    n: [Float; 3],
 ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
-    crate::mesh::intersect_plane(
-        &Vec3::from_slice(p.as_slice().unwrap()),
-        &Vec3::from_slice(u.as_slice().unwrap()),
-        &Vec3::from_slice(a.as_slice().unwrap()),
-        &Vec3::from_slice(n.as_slice().unwrap()),
-    )
-    .map(|v| v.to_array().to_pyarray(py))
+    crate::mesh::intersect_plane(&p.into(), &u.into(), &a.into(), &n.into())
+        .map(|v| v.to_array().to_pyarray(py))
 }
 
 #[pyfunction]
 #[pyo3(signature = (p, u, a, b, c, n))]
 pub fn intersect_triangle<'py>(
     py: Python<'py>,
-    p: numpy::PyReadonlyArray1<'_, Float>,
-    u: numpy::PyReadonlyArray1<'_, Float>,
-    a: numpy::PyReadonlyArray1<'_, Float>,
-    b: numpy::PyReadonlyArray1<'_, Float>,
-    c: numpy::PyReadonlyArray1<'_, Float>,
-    n: numpy::PyReadonlyArray1<'_, Float>,
+    p: [Float; 3],
+    u: [Float; 3],
+    a: [Float; 3],
+    b: [Float; 3],
+    c: [Float; 3],
+    n: [Float; 3],
 ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
     crate::mesh::intersect_triangle(
-        &Vec3::from_slice(p.as_slice().unwrap()),
-        &Vec3::from_slice(u.as_slice().unwrap()),
-        &Vec3::from_slice(a.as_slice().unwrap()),
-        &Vec3::from_slice(b.as_slice().unwrap()),
-        &Vec3::from_slice(c.as_slice().unwrap()),
-        &Vec3::from_slice(n.as_slice().unwrap()),
+        &p.into(),
+        &u.into(),
+        &a.into(),
+        &b.into(),
+        &c.into(),
+        &n.into(),
     )
     .map(|v| v.to_array().to_pyarray(py))
 }
@@ -747,18 +732,18 @@ pub fn intersect_triangle<'py>(
 #[pyo3(signature = (p, u, a, b, c))]
 pub fn intersect_triangle_moller_trumblore<'py>(
     py: Python<'py>,
-    p: numpy::PyReadonlyArray1<'_, Float>,
-    u: numpy::PyReadonlyArray1<'_, Float>,
-    a: numpy::PyReadonlyArray1<'_, Float>,
-    b: numpy::PyReadonlyArray1<'_, Float>,
-    c: numpy::PyReadonlyArray1<'_, Float>,
+    p: [Float; 3],
+    u: [Float; 3],
+    a: [Float; 3],
+    b: [Float; 3],
+    c: [Float; 3],
 ) -> Option<Bound<'py, numpy::PyArray1<Float>>> {
     crate::mesh::intersect_triangle_moller_trumbore(
-        &Vec3::from_slice(p.as_slice().unwrap()),
-        &Vec3::from_slice(u.as_slice().unwrap()),
-        &Vec3::from_slice(a.as_slice().unwrap()),
-        &Vec3::from_slice(b.as_slice().unwrap()),
-        &Vec3::from_slice(c.as_slice().unwrap()),
+        &p.into(),
+        &u.into(),
+        &a.into(),
+        &b.into(),
+        &c.into(),
     )
     .map(|v| v.to_array().to_pyarray(py))
 }
@@ -767,14 +752,14 @@ pub fn intersect_triangle_moller_trumblore<'py>(
 #[pyo3(signature = (mesh, p, u, exit_first=false))]
 pub fn intersect_mesh<'py>(
     mesh: Bound<'py, Mesh>,
-    p: numpy::PyReadonlyArray1<'_, Float>,
-    u: numpy::PyReadonlyArray1<'_, Float>,
+    p: [Float; 3],
+    u: [Float; 3],
     exit_first: bool,
 ) -> Option<(usize, Bound<'py, numpy::PyArray1<Float>>)> {
     crate::mesh::intersect_mesh(
         &mesh.borrow().inner.borrow(),
-        &Vec3::from_slice(p.as_slice().unwrap()),
-        &Vec3::from_slice(u.as_slice().unwrap()),
+        &p.into(),
+        &u.into(),
         exit_first,
     )
     .map(|(ii, v)| (ii, v.to_array().to_pyarray(mesh.py())))

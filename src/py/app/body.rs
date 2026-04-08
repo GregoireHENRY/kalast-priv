@@ -39,4 +39,11 @@ impl Body {
             inner: Rc::new(RefCell::new(body)),
         }
     }
+
+    #[getter]
+    fn instance(&self) -> super::gpu::InstanceInput {
+        super::gpu::InstanceInput {
+            inner: Rc::new(RefCell::new(self.inner.borrow().instance)),
+        }
+    }
 }

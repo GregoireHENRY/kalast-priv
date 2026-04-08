@@ -34,9 +34,10 @@ struct InstanceInput {
     @location(9) mat_row_1: vec4<f32>,
     @location(10) mat_row_2: vec4<f32>,
     @location(11) mat_row_3: vec4<f32>,
-    @location(12) normal_row_0: vec3<f32>,
-    @location(13) normal_row_1: vec3<f32>,
-    @location(14) normal_row_2: vec3<f32>,
+    @location(12) normal_row_0: vec4<f32>,
+    @location(13) normal_row_1: vec4<f32>,
+    @location(14) normal_row_2: vec4<f32>,
+    @location(15) normal_row_3: vec4<f32>,
     // @location(16) color: vec3<f32>,
     // @location(17) color_mode: u32,
 };

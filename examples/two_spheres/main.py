@@ -57,7 +57,9 @@ mat = kalast.util.mat_axis_angle(numpy.array([0.0, 0.0, 1.0]), 0.01)
 
 def tick(sim):
 
-    # p0 = sim.get_matrix_model(0)[0:3, 3]
+    # p0 = sim.get_matrix_model(0)
+    # print(f"#{sim.state.iteration} {p0} {p0.shape}")
+
     # p1 = sim.get_matrix_model(1)[0:3, 3]
     # print(f"#{sim.state.iteration} {p0} {p1}")
     

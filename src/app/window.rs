@@ -118,11 +118,7 @@ impl Window {
             &device,
             &crate::meshes::cube::VERTICES,
             &crate::meshes::cube::INDICES,
-            &super::gpu::InstanceInput {
-                // color: super::gpu::color_vec3(&wgpu::Color::WHITE),
-                // color_mode: 1,
-                ..Default::default()
-            },
+            &super::gpu::InstanceInput::default(),
             false,
         ));
 
@@ -136,7 +132,7 @@ impl Window {
                     }
                     println!("indices: {:?}", &mesh.indices);
                     println!("mat: {:?}", body.instance.mat);
-                    println!("normal: {:?}", body.instance.normal);
+                    // println!("normal: {:?}", body.instance.normal);
                     // println!("color: {}", body.instance.color);
                     // println!("color mode: {}", body.instance.color_mode);
                 }

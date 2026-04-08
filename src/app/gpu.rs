@@ -1,7 +1,7 @@
 use image::GenericImageView;
 use wgpu::util::DeviceExt;
 
-use crate::{Mat3, Mat4, Vec3};
+use crate::{Mat4, Vec3};
 
 pub const SHADER_MAIN: wgpu::ShaderModuleDescriptor =
     wgpu::include_wgsl!("../../shaders/shader_main.wgsl");
@@ -199,10 +199,9 @@ impl crate::mesh::Vertex {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct InstanceInput {
-    pub mat: [[f32; 4]; 4],
+    pub mat: Mat4,
 
-    // let normal_matrix = model_matrix.inverse().transpose();
-    pub normal: [[f32; 3]; 3],
+    normal: Mat4,
     //
 
     // instance color used in vertex if color mode is 1
@@ -217,11 +216,17 @@ pub struct InstanceInput {
 impl Default for InstanceInput {
     fn default() -> Self {
         Self {
-            mat: Mat4::IDENTITY.to_cols_array_2d(),
-            normal: Mat3::IDENTITY.to_cols_array_2d(),
+            mat: Mat4::IDENTITY,
+            normal: Mat4::IDENTITY,
             // color: Vec3::new(1.0, 1.0, 1.0),
             // color_mode: 0,
         }
+    }
+}
+
+impl InstanceInput {
+    pub fn compute_normal(&mut self) {
+        self.normal = self.mat.inverse().transpose();
     }
 }
 
@@ -238,14 +243,15 @@ pub struct MeshBuffer {
 
 impl MeshBuffer {
     // matrix model
-    pub const ATTRIBS: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+    pub const ATTRIBS: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
         8  => Float32x4,
         9  => Float32x4,
         10 => Float32x4,
         11 => Float32x4,
-        12  => Float32x3,
-        13  => Float32x3,
-        14 => Float32x3,
+        12  => Float32x4,
+        13  => Float32x4,
+        14 => Float32x4,
+        15 => Float32x4,
         // 16 => Float32x3,
         // 17 => Uint32,
     ];

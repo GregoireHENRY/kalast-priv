@@ -38,6 +38,16 @@ impl Simulation {
         self.inner.borrow_mut().sun = arr.into();
     }
 
+    #[getter]
+    fn bodies(&mut self) -> Vec<super::body::Body> {
+        self.inner
+            .borrow()
+            .bodies
+            .iter()
+            .map(|b| super::body::Body { inner: b.clone() })
+            .collect()
+    }
+
     #[pyo3(signature = (
         mesh=None,
         instance=None,
@@ -63,10 +73,7 @@ impl Simulation {
             .push(if let Some(body) = body {
                 body.inner.clone()
             } else {
-                let instance = instance.unwrap_or(super::gpu::InstanceInput::new(
-                    mat,
-                    // color, color_mode
-                ));
+                let instance = instance.unwrap_or(super::gpu::InstanceInput::new(mat));
                 super::body::Body::new(mesh, Some(instance), entity)
                     .inner
                     .clone()
@@ -80,7 +87,9 @@ impl Simulation {
         let inner = &slf.borrow().inner;
         let body = &inner.borrow().bodies[index];
         let slice = body.borrow().instance.mat;
-        let arr = ndarray::ArrayView2::from(slice.as_ref());
+        let arr = ndarray::ArrayView1::from(slice.as_ref())
+            .into_shape_with_order((4, 4))
+            .unwrap();
         unsafe { numpy::PyArray2::borrow_from_array(&arr, slf.into_any()) }
     }
 

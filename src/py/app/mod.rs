@@ -8,8 +8,6 @@ use std::{cell::RefCell, rc::Rc};
 
 use pyo3::prelude::*;
 
-use crate::{Mat4, Vec3};
-
 #[pyclass(unsendable)]
 pub struct App {
     pub inner: Rc<RefCell<crate::app::App>>,
@@ -19,9 +17,6 @@ pub struct App {
 impl App {
     #[new]
     fn new() -> Self {
-        let m = Mat4::from_axis_angle(Vec3::Z, 0.01);
-        println!("{}", m);
-        
         Self {
             inner: Rc::new(RefCell::new(crate::app::App::new())),
         }

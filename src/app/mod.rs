@@ -63,14 +63,14 @@ impl App {
 
     pub fn set_tick<F>(&mut self, f: F)
     where
-        F: Fn(&mut simulation::Simulation) + 'static,
+        F: Fn(&mut simulation::Simulation, Float) + 'static,
     {
         self.tick = Some(Tick::Rust(Box::new(f)));
     }
 
     pub fn with_tick<F>(mut self, f: F) -> Self
     where
-        F: Fn(&mut simulation::Simulation) + 'static,
+        F: Fn(&mut simulation::Simulation, Float) + 'static,
     {
         self.set_tick(f);
         self
@@ -123,14 +123,14 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                 match &self.tick {
                     Some(Tick::Rust(f)) => {
-                        f(&mut self.simulation.borrow_mut());
+                        f(&mut self.simulation.borrow_mut(), self.dt);
                     }
                     Some(Tick::Python {
                         callback,
                         simulation,
                     }) => {
-                        Python::attach(|py| {
-                            callback.call1(py, (simulation.clone(),)).unwrap();
+                        Python::attach(|py: Python<'_>| {
+                            callback.call1(py, (simulation.clone(), self.dt)).unwrap();
                         });
                     }
                     None => {}
@@ -173,6 +173,9 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
                     (winit::keyboard::KeyCode::Space, true) => {
                         // let win = self.window.as_mut().unwrap();
                         // win.toggle_color_xy = !win.toggle_color_xy;
+                    }
+                    (winit::keyboard::KeyCode::KeyP, true) => {
+                        self.simulation.borrow_mut().state.toggle_pause();
                     }
 
                     (winit::keyboard::KeyCode::KeyT, true) => {
@@ -258,7 +261,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 }
 
 pub enum Tick {
-    Rust(Box<dyn for<'a> Fn(&'a mut simulation::Simulation)>),
+    Rust(Box<dyn for<'a> Fn(&'a mut simulation::Simulation, Float)>),
     Python {
         callback: Py<PyAny>,
         simulation: crate::py::app::simulation::Simulation,

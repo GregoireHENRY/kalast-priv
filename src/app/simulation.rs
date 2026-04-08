@@ -67,4 +67,10 @@ impl State {
             pause_at: None,
         }
     }
+    
+    // return pause state after toggle
+    pub fn toggle_pause(&mut self) -> bool {
+        self.is_paused = !self.is_paused;
+        self.is_paused
+    }
 }

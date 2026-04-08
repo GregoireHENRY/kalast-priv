@@ -4,17 +4,19 @@ use pyo3::prelude::*;
 
 use crate::Float;
 
-#[pyclass(unsendable)]
+#[pyclass(from_py_object, unsendable)]
+#[derive(Clone)]
 pub struct Simulation {
-    pub inner: Rc<RefCell<crate::app::simulation::Simulation>>,
+    pub app: Rc<RefCell<crate::app::App>>,
 }
 
 #[pymethods]
 impl Simulation {
+    /*
     #[getter]
     fn state(&self) -> State {
         State {
-            simulation: self.inner.clone(),
+            app: self.inner.clone(),
         }
     }
 
@@ -24,20 +26,22 @@ impl Simulation {
             simulation: self.inner.clone(),
         }
     }
+    */
 
     #[getter]
     fn sun<'py>(slf: pyo3::Bound<'py, Self>) -> pyo3::Bound<'py, numpy::PyArray1<Float>> {
-        let inner = &slf.borrow().inner;
-        let slice = &inner.borrow().sun;
-        let arr = ndarray::ArrayView1::from(slice.as_ref());
+        let app = &slf.borrow().app;
+        let v = &app.borrow().simulation.sun;
+        let arr = ndarray::ArrayView1::from(v.as_ref());
         unsafe { numpy::PyArray1::borrow_from_array(&arr, slf.into_any()) }
     }
 
     #[setter]
-    fn set_sun(&self, arr: [Float; 3]) {
-        self.inner.borrow_mut().sun = arr.into();
+    fn set_sun(&self, v: [Float; 3]) {
+        self.app.borrow_mut().simulation.sun = v.into();
     }
 
+    /*
     #[getter]
     fn bodies(&mut self) -> Vec<super::body::Body> {
         self.inner
@@ -92,13 +96,14 @@ impl Simulation {
             .unwrap();
         unsafe { numpy::PyArray2::borrow_from_array(&arr, slf.into_any()) }
     }
+    */
 
     fn update(&mut self) {
-        self.inner.borrow_mut().update();
+        self.app.borrow_mut().simulation.update();
     }
 
     fn __repr__(&self) -> String {
-        format!("{:?}", self.inner.borrow())
+        format!("{:?}", self.app.borrow().simulation)
     }
 }
 

@@ -10,6 +10,7 @@ pub struct Body {
 
 #[pymethods]
 impl Body {
+    /*
     #[new]
     #[pyo3(signature = (
         mesh=None,
@@ -46,4 +47,5 @@ impl Body {
             inner: Rc::new(RefCell::new(self.inner.borrow().instance)),
         }
     }
+    */
 }

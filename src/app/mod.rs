@@ -2,12 +2,10 @@ pub mod body;
 pub mod camera;
 pub mod config;
 pub mod gpu;
-pub mod simulation;
-pub mod window;
 pub mod pass;
+pub mod simulation;
 pub mod uniform;
-
-use std::{cell::RefCell, rc::Rc};
+pub mod window;
 
 use pyo3::prelude::*;
 use std::sync::Arc;
@@ -21,7 +19,7 @@ pub struct App {
     pub now: std::time::Instant,
     pub dt: Float,
 
-    pub simulation: Rc<RefCell<crate::app::simulation::Simulation>>,
+    pub simulation: crate::app::simulation::Simulation,
     pub tick: Option<Tick>,
 
     pub controller: camera::Controller,
@@ -47,7 +45,7 @@ impl App {
             now: std::time::Instant::now(),
             dt: 0.0,
 
-            simulation: Rc::new(RefCell::new(crate::app::simulation::Simulation::new())),
+            simulation: crate::app::simulation::Simulation::new(),
             tick: None,
 
             controller,
@@ -80,9 +78,8 @@ impl App {
 
     pub fn exit(&self, ev: &winit::event_loop::ActiveEventLoop) {
         let win = self.window.as_ref().unwrap();
-        let sim = self.simulation.borrow();
 
-        if sim.camera.control == camera::Control::WASD {
+        if self.simulation.camera.control == camera::Control::WASD {
             win.reset_cursor();
         }
 
@@ -103,7 +100,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
             ev.owned_display_handle(),
             win.clone(),
             &self.config,
-            &self.simulation.borrow(),
+            &self.simulation,
         )));
     }
 
@@ -126,33 +123,30 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                 match &self.tick {
                     Some(Tick::Rust(f)) => {
-                        let mut simulation = self.simulation.borrow_mut();
-                        f(&mut simulation);
+                        f(&mut self.simulation);
                     }
                     Some(Tick::Python {
                         callback,
                         simulation,
                     }) => {
                         Python::attach(|py| {
-                            callback.call1(py, (simulation,)).unwrap();
+                            callback.call1(py, (simulation.clone(),)).unwrap();
                         });
                     }
                     None => {}
                 };
 
                 {
-                    let mut simulation = self.simulation.borrow_mut();
-
-                    simulation
+                    self.simulation
                         .camera
                         .update_with_controller(&mut self.controller, self.dt);
 
-                    simulation.update();
+                    self.simulation.update();
                 }
 
                 {
                     let win = self.window.as_mut().unwrap();
-                    win.update(&self.simulation.borrow());
+                    win.update(&mut self.simulation);
                     win.render(&self.config);
                 }
 
@@ -182,8 +176,8 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                     (winit::keyboard::KeyCode::KeyT, true) => {
                         // switch camera type
-                        self.simulation.borrow_mut().camera.toggle_control();
-                        let control = self.simulation.borrow().camera.control;
+                        self.simulation.camera.toggle_control();
+                        let control = self.simulation.camera.control;
                         if self.config.debug_app {
                             println!("[APP] Camera control changed, now is {:?}", control);
                         }
@@ -214,7 +208,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
             }
 
             winit::event::WindowEvent::PinchGesture { delta, .. } => {
-                if self.simulation.borrow().camera.control == camera::Control::Arcball {
+                if self.simulation.camera.control == camera::Control::Arcball {
                     self.controller.zoom(delta as Float);
                 }
             }
@@ -237,7 +231,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
     ) {
         match ev {
             winit::event::DeviceEvent::MouseMotion { delta: (dx, dy) } => {
-                if self.simulation.borrow().camera.control == camera::Control::WASD {
+                if self.simulation.camera.control == camera::Control::WASD {
                     self.controller.mouse_motion(dx as Float, dy as Float);
                 }
             }
@@ -253,7 +247,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
                     }) => (x as Float, y as Float),
                 };
 
-                if self.simulation.borrow().camera.control == camera::Control::Arcball {
+                if self.simulation.camera.control == camera::Control::Arcball {
                     self.controller.mouse_motion(-dx, -dy);
                 }
             }
@@ -266,6 +260,6 @@ pub enum Tick {
     Rust(Box<dyn for<'a> Fn(&'a mut simulation::Simulation)>),
     Python {
         callback: Py<PyAny>,
-        simulation: Py<crate::py::app::simulation::Simulation>,
+        simulation: crate::py::app::simulation::Simulation,
     },
 }

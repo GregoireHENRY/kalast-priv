@@ -1,8 +1,8 @@
 pub mod body;
 pub mod camera;
 pub mod config;
-pub mod simulation;
 pub mod gpu;
+pub mod simulation;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -32,7 +32,7 @@ impl App {
     #[getter]
     fn simulation(&self) -> simulation::Simulation {
         simulation::Simulation {
-            inner: self.inner.borrow().simulation.clone(),
+            app: self.inner.clone(),
         }
     }
 
@@ -42,19 +42,14 @@ impl App {
 
     #[setter]
     fn set_tick(&mut self, callback: Py<PyAny>) {
-        Python::attach(|py| {
-            let simulation = Py::new(
-                py,
-                simulation::Simulation {
-                    inner: self.inner.borrow().simulation.clone(),
-                },
-            )
-            .unwrap();
+        // Python::attach(|py| {
+        // let simulation = Py::new(py, self.simulation()).unwrap();
 
-            self.inner.borrow_mut().tick = Some(crate::app::Tick::Python {
-                callback,
-                simulation,
-            });
+        //});
+
+        self.inner.borrow_mut().tick = Some(crate::app::Tick::Python {
+            callback,
+            simulation: self.simulation(),
         });
     }
 }

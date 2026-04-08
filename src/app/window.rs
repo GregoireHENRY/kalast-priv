@@ -302,10 +302,10 @@ impl Window {
             bytemuck::bytes_of(&self.uniforms.view.uniform),
         );
 
-        for ii in 0..simulation.bodies.len() {
-            self.meshes[ii]
-                .update_instance_buffer(&self.device, &simulation.bodies[ii].borrow().instance);
-        }
+        // for ii in 0..simulation.bodies.len() {
+        //     self.meshes[ii]
+        //         .update_instance_buffer(&self.device, &simulation.bodies[ii].borrow().instance);
+        // }
 
         // self.queue.write_buffer(
         //     &self.uniforms.view.buffer,

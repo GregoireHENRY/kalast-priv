@@ -7,7 +7,7 @@ import kalast
 
 app = kalast.app.App()
 
-app.config.global_color_mode = 3
+app.config.global_color_mode = 0
 
 app.config.debug_light_cube_show = True
 
@@ -27,8 +27,8 @@ app.config.shadow_bias_minimum = 1e-4
 # app.config.shadow_pcf = 2
 
 app.config.light_side = 1.0
-app.config.light_znear = 10.0
-app.config.light_zfar = 30.0
+app.config.light_znear = 1.0
+app.config.light_zfar = 100.0
 
 # app.config.light_up = [0.0, 1.0, 0.0]
 app.simulation.sun = [0.0, 20.0, 0.0]

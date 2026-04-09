@@ -1,14 +1,15 @@
 use crate::{Float, Mat3, Mat4, Vec3};
 
-pub const SENSITIVITY_MOVE: Float = 4.0;
+pub const SENSITIVITY_MOVE: Float = 0.5;
 pub const SENSITIVITY_LOOK: Float = 0.1;
 pub const SENSITIVITY_ROTATE: Float = 0.1;
-pub const SENSITIVITY_ZOOM: Float = 6e2;
+pub const SENSITIVITY_ZOOM: Float = 1.0e1;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Control {
     Arcball,
     WASD,
+    None,
 }
 
 // if unit vectors are not normalized, results are gonna be wrong
@@ -64,6 +65,10 @@ impl Camera {
         -self.right()
     }
 
+    pub fn distance_anchor(&self) -> Float {
+        (self.anchor - self.pos).length()
+    }
+
     pub fn lookto(&self) -> anyhow::Result<Mat4> {
         if !self.dir.is_normalized() {
             return Err(anyhow::anyhow!("Camera dir {} is not normalized", self.dir));
@@ -100,7 +105,7 @@ impl Camera {
 
     pub fn toggle_control(&mut self) {
         self.control = match self.control {
-            Control::Arcball => Control::WASD,
+            Control::Arcball | Control::None => Control::WASD,
             Control::WASD => Control::Arcball,
         };
     }
@@ -109,6 +114,7 @@ impl Camera {
         match self.control {
             Control::Arcball => self.arcball_rotate(ctrl, dt),
             Control::WASD => self.wasd_with_conroller(ctrl, dt),
+            Control::None => {}
         };
 
         // reset mouse amounts
@@ -119,13 +125,16 @@ impl Camera {
 
     pub fn arcball_rotate(&mut self, ctrl: &mut Controller, dt: Float) {
         // zoom
-        self.pos += self.dir * ctrl.zoom * ctrl.sensitivity_zoom * SENSITIVITY_ZOOM * dt;
-
-        let up_neg = { if self.up.z > 0.0 { 1.0 } else { -1.0 } };
+        self.pos += self.dir
+            * ctrl.zoom
+            * ctrl.sensitivity_zoom
+            * SENSITIVITY_ZOOM
+            * dt
+            * self.distance_anchor();
 
         // calc matrices
         let m1 = Mat3::from_axis_angle(
-            self.up_world * up_neg,
+            self.up_world,
             ctrl.horizontal * ctrl.sensitivity_rotate * SENSITIVITY_ROTATE * dt,
         );
         let m2 = Mat3::from_axis_angle(
@@ -147,7 +156,8 @@ impl Camera {
             + self.up * (ctrl.up - ctrl.down))
             * ctrl.sensitivity_move
             * SENSITIVITY_MOVE
-            * dt;
+            * dt
+            * self.distance_anchor();
 
         // look around
         let m1 = Mat3::from_axis_angle(

@@ -2,7 +2,22 @@ use std::sync::Arc;
 
 use glam::Mat4;
 
-use crate::Float;
+use crate::{Float, Vec3};
+
+pub fn light_view_proj(
+    pos: Vec3,
+    target: Vec3,
+    up: Vec3,
+    side: Float,
+    znear: Float,
+    zfar: Float,
+) -> Mat4 {
+    let dir = (target - pos).normalize();
+    let view = Mat4::look_to_rh(pos, dir, up);
+    let proj = Mat4::orthographic_rh(-side, side, -side, side, znear, zfar);
+
+    proj * view
+}
 
 pub struct Window {
     pub window: Arc<winit::window::Window>,
@@ -179,33 +194,26 @@ impl Window {
                 .unwrap(),
         };
 
-        let light = {
-            let pos = {
-                if let Some(d) = config.light_distance {
-                    simulation.sun.normalize() * d
-                } else {
-                    simulation.sun
-                }
-            };
-
-            let dir = (config.light_target - pos).normalize();
-            let view = Mat4::look_to_rh(pos, dir, config.light_up);
-
-            let proj = Mat4::orthographic_rh(
-                -config.light_side,
-                config.light_side,
-                -config.light_side,
-                config.light_side,
-                config.light_znear,
-                config.light_zfar,
-            );
-
-            super::uniform::Light {
-                view_proj: proj * view,
-                pos,
-                color: super::gpu::color_vec3(&config.light_color),
-                ..Default::default()
+        let light_pos = {
+            if let Some(d) = config.light_distance {
+                simulation.sun.normalize() * d
+            } else {
+                simulation.sun
             }
+        };
+        let light_vp = light_view_proj(
+            light_pos,
+            config.light_target,
+            config.light_up,
+            config.light_side,
+            config.light_znear,
+            config.light_zfar,
+        );
+        let light = super::uniform::Light {
+            view_proj: light_vp,
+            pos: light_pos,
+            color: super::gpu::color_vec3(&config.light_color),
+            ..Default::default()
         };
 
         let view = super::gpu::UniformBuffer::new(&device, super::uniform::View { camera, light });
@@ -280,7 +288,11 @@ impl Window {
         }
     }
 
-    pub fn update(&mut self, simulation: &crate::app::simulation::Simulation) {
+    pub fn update(
+        &mut self,
+        simulation: &crate::app::simulation::Simulation,
+        config: &crate::app::config::Config,
+    ) {
         let width = self.surface_config.width;
         let height = self.surface_config.height;
 
@@ -288,6 +300,24 @@ impl Window {
             .camera
             .view_proj(width as Float / height as Float)
             .unwrap();
+
+        let light_pos = {
+            if let Some(d) = config.light_distance {
+                simulation.sun.normalize() * d
+            } else {
+                simulation.sun
+            }
+        };
+        let light_vp = light_view_proj(
+            light_pos,
+            config.light_target,
+            config.light_up,
+            config.light_side,
+            config.light_znear,
+            config.light_zfar,
+        );
+        self.uniforms.view.uniform.light.view_proj = light_vp;
+        self.uniforms.view.uniform.light.pos = light_pos;
 
         self.queue.write_buffer(
             &self.uniforms.view.buffer,

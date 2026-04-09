@@ -32,8 +32,8 @@ mat_spin_tilt[:3, :3] = kalast.util.mat_axis_angle(
 mat = mat_spin_tilt.copy()
 app.simulation.load_mesh(
     # path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003_decimated_3072.obj",
-    path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003_decimated_1k.obj",
-    # path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003.obj",
+    # path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003_decimated_1k.obj",
+    path="/Users/gregoireh/data/mesh/didymos/didymos_g_9309mm_spc_obj_0000n00000_v003.obj",
     # path="/Users/gregoireh/data/mesh/didymos/didymos_g_1165mm_spc_obj_0000n00000_v003.obj",
     mat=mat,
     flatten=True,
@@ -43,8 +43,8 @@ mat = mat_spin_tilt.copy()
 mat[0:3, 3] = [0.0, 1.2, 0.0]
 app.simulation.load_mesh(
     # path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_1940mm_spc_obj_0000n00000_v004_decimated_3072.obj",
-    path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_1940mm_spc_obj_0000n00000_v004_decimated_1k.obj",
-    # path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_1940mm_spc_obj_0000n00000_v004.obj",
+    # path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_1940mm_spc_obj_0000n00000_v004_decimated_1k.obj",
+    path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_1940mm_spc_obj_0000n00000_v004.obj",
     # path="/Users/gregoireh/data/mesh/dimorphos/dimorphos_g_0243mm_spc_obj_0000n00000_v004.obj",
     mat=mat,
     flatten=True,

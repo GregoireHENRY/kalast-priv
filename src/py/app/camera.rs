@@ -77,20 +77,28 @@ impl Camera {
         self.simulation.borrow_mut().camera.up_world = v.into();
     }
 
-    fn is_wasd(&self) -> bool {
+    fn is_control_wasd(&self) -> bool {
         self.simulation.borrow().camera.control == crate::app::camera::Control::WASD
     }
 
-    fn is_arcball(&self) -> bool {
+    fn is_control_arcball(&self) -> bool {
         self.simulation.borrow().camera.control == crate::app::camera::Control::Arcball
     }
 
-    fn set_wasd(&mut self) {
+    fn is_control_none(&self) -> bool {
+        self.simulation.borrow().camera.control == crate::app::camera::Control::None
+    }
+
+    fn set_control_wasd(&mut self) {
         self.simulation.borrow_mut().camera.control = crate::app::camera::Control::WASD;
     }
 
-    fn set_arcball(&mut self) {
+    fn set_control_arcball(&mut self) {
         self.simulation.borrow_mut().camera.control = crate::app::camera::Control::Arcball;
+    }
+
+    fn set_control_none(&mut self) {
+        self.simulation.borrow_mut().camera.control = crate::app::camera::Control::None;
     }
 
     #[getter]

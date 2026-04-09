@@ -53,12 +53,21 @@ impl App {
     }
 
     pub fn start(&mut self) {
+        self.apply_config_at_start();
+
         env_logger::init();
         let ev = winit::event_loop::EventLoop::with_user_event()
             .build()
             .unwrap();
 
         ev.run_app(self).unwrap();
+    }
+
+    pub fn apply_config_at_start(&mut self) {
+        self.controller.sensitivity_move = self.config.sensitivity_move;
+        self.controller.sensitivity_look = self.config.sensitivity_look;
+        self.controller.sensitivity_rotate = self.config.sensitivity_rotate;
+        self.controller.sensitivity_zoom = self.config.sensitivity_zoom;
     }
 
     pub fn set_tick<F>(&mut self, f: F)
@@ -82,6 +91,8 @@ impl App {
         if self.simulation.borrow().camera.control == camera::Control::WASD {
             win.reset_cursor();
         }
+        
+        // win.get_window().screenshot()
 
         ev.exit()
     }
@@ -147,7 +158,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
 
                 {
                     let win = self.window.as_mut().unwrap();
-                    win.update(&mut self.simulation.borrow_mut());
+                    win.update(&mut self.simulation.borrow_mut(), &self.config);
                     win.render(&self.config);
                 }
 
@@ -204,6 +215,7 @@ impl winit::application::ApplicationHandler<crate::app::window::Window> for crat
                                     })
                                     .unwrap();
                             }
+                            camera::Control::None => {}
                         }
                     }
 

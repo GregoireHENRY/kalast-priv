@@ -36,7 +36,7 @@ mat = numpy.eye(4)
 mat[:3, :3] = kalast.util.mat_axis_angle(numpy.array([0.0, 0.0, 1.0]), 0.01)
 
 
-def tick(sim):
+def tick(sim, dt):
     sim.bodies[1].mat = mat @ sim.bodies[1].mat
 
     # p1 = sim.bodies[1].mat[:3, 3]
